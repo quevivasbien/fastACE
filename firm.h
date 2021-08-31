@@ -1,21 +1,20 @@
 #ifndef FIRM_H
 #define FIRM_H
 
-#include <vector>
-
-#include "economy.h"
+#include "agent.h"
 
 
-class Firm {
+class Firm : public Agent {
+    // Firms can hire laborers (Persons), produce new goods, and pay dividends on profits
+    // Firms are owned by other Agents (other firms or persons)
 public:
-    void buyFactors();
-    void hireLaborers();  // handled differently than other factors
+    void hireLaborers();
     void produce();
     void payDividends();
-private:
-    Economy* economy;
+
+protected:
     std::vector<Agent*> owners;
-    std::vector<GoodStock> inventory;  // includes both factors and products
+    std::vector<Job> jobs;
     double money;
 };
 

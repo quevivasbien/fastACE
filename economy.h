@@ -6,27 +6,33 @@
 
 
 class Agent;
+class Person;
 class Firm;
 
-struct Good {
-    std::string name;
-    // include other characteristics of the good here
-};
-
 struct GoodStock {
-    Good* good;
+    std::string good;
     double quantity;
 }
 
 struct Offer {
-    Good* good;
+    Agent* offerer;
+    std::string good;
     double quantity;
     double price;
-    bool isPromise;  // if false, then offer disappears if claimed once
+    // bool isPromise;  // if false, then offer disappears if claimed once
+    bool claimed = false;
 };
 
-struct LaborOffer {
-    Agent* laborer;
+struct JobOffer {
+    Firm* offerer;
+    double labor;
+    double wage;
+    bool claimed = false;
+}
+
+struct Job {
+    Person* laborer;
+    double labor;
     double wage;
 }
 
@@ -35,11 +41,17 @@ struct LaborOffer {
 
 
 class Economy {
-private:
-    std::vector<Agent> agents;
+public:
+    void timeStep();
+
+protected:
+    std::vector<Person> persons;
     std::vector<Firm> firms;
     std::vector<Offer> market;
-    std::vector<LaborOffer> laborMarket;
+    std::vector<JobOffer> laborMarket;
+    void flushMarket();  // clear claimed offers
+    void flushLaborMarket();  // clear claimed job offers
+
 };
 
 #endif
