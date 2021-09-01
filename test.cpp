@@ -1,28 +1,9 @@
 #include <iostream>
-#include <vector>
-
-class Object {
-    int func() {
-        return 0;
-    }
-};
-
-struct Structure {
-    Object* objPtr;
-    int id = 1;
-};
-
-class Child : public Object {
-public:
-    Structure newFunc() {
-        Structure str {this};
-        return str;
-    }
-};
+#include "economy.h"
 
 int main() {
-    Child child;
-    Structure str = child.newFunc();
-    std::cout << &child << ' '<< str.objPtr << std::endl;
+    Economy economy;
+    economy.addPerson();
+    economy.addFirm(economy.persons[0]);
     return 0;
 }

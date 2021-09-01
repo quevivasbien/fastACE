@@ -9,20 +9,22 @@ Person::Person(
 
 bool Person::acceptJob(unsigned int i) {
     JobOffer jobOffer = economy->laborMarket[i];
-    // check if the offer is still available and if worker still has time for it
+    // check if the offer is still available, worker still has time for it, and employer can pay the wage
     if !(jobOffer.claimed && (labor + jobOffer.labor > 1)) {
         jobOffer.claimed = true;
-        Job newJob {
-            this,
-            labor,
-            wage
-        };
-        jobOffer.offerer->jobs.push_back(newJob);
-        return true;
+        if (jobOffer.offerer->money >= jobOffer.wage) {
+            Job newJob {
+                this,
+                labor
+            };
+            jobOffer.offerer->jobs.push_back(newJob);
+            // update worker's money and available labor
+            money += jobOffer.wage;
+            labor += jobOffer.labor;
+            return true;
+        }
     }
-    else {
-        return false;
-    }
+    return false;
 }
 
 void Person::searchForJob() {

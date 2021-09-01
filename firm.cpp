@@ -1,17 +1,19 @@
+#include <memory>
 #include "firm.h"
 
-Firm::Firm(Economy* economy_, Agent* owner) : economy(economy_), owners(std::vector<Agent*> {owner}), money(0) {}
+Firm::Firm(Economy* economy_, std::shared_ptr<Agent> owner)
+    : economy(economy_), owners(std::vector<std::shared_ptr<Agent>> {owner}), money(0) {}
 
-Firm::Firm(Economy* economy_, std::vector<Agent*> owners_, std::vector<GoodStock> inventory_, double money_)
+Firm::Firm(Economy* economy_, std::vector<std::shared_ptr<Agent>> owners_, std::vector<GoodStock> inventory_, double money_)
     : economy(economy_), owners(owners_), inventory(inventory_), money(money_) {}
 
 
 void Firm::HireLaborers() {
-    // as a toy example, create a single job listing for 1 unit of labor, with wage 1
+    // as a toy example, create a single job listing for 1 unit of labor, with wage being whatever money the firm has
     JobOffer newJobOffer {
         this,
         1,
-        1
+        money
     };
     economy->laborMarket.push_back(newJobOffer);
 }
