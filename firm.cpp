@@ -1,14 +1,14 @@
 #include <memory>
-#include "firm.h"
+#include "economy.h"
 
 Firm::Firm(Economy* economy_, std::shared_ptr<Agent> owner)
-    : economy(economy_), owners(std::vector<std::shared_ptr<Agent>> {owner}), money(0) {}
+    : Agent(economy_), owners(std::vector<std::shared_ptr<Agent>> {owner}) {}
 
 Firm::Firm(Economy* economy_, std::vector<std::shared_ptr<Agent>> owners_, std::vector<GoodStock> inventory_, double money_)
-    : economy(economy_), owners(owners_), inventory(inventory_), money(money_) {}
+    : Agent(economy_, inventory_, money_), owners(owners_) {}
 
 
-void Firm::HireLaborers() {
+void Firm::hireLaborers() {
     // as a toy example, create a single job listing for 1 unit of labor, with wage being whatever money the firm has
     JobOffer newJobOffer {
         this,
@@ -32,7 +32,11 @@ void Firm::payDividends() {
     // as a toy example, evenly divide money between all owners
     double moneyPerOwner = money / owners.size();
     for (unsigned int i = 0; i < owners.size(); i++) {
-        owners[i]->money += moneyPerOwner;
+        owners[i]->addMoney(moneyPerOwner);
     }
     money = 0;
+}
+
+void Firm::addJob(Job job) {
+    jobs.push_back(job);
 }
