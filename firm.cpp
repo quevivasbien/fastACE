@@ -1,3 +1,4 @@
+#include <vector>
 #include <memory>
 #include "economy.h"
 

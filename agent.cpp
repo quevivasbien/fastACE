@@ -1,3 +1,5 @@
+#include <string>
+#include <vector>
 #include "economy.h"
 
 
@@ -40,6 +42,7 @@ bool Agent::removeFromInventory(std::string good, double quantity) {
             }
         }
     }
+    return false;
 }
 
 float Agent::getMoney() {

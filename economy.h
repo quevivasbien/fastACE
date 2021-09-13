@@ -46,7 +46,9 @@ public:
     std::vector<std::shared_ptr<Person>> persons;
     std::vector<std::shared_ptr<Firm>> firms;
     virtual void addPerson();
+    virtual void addPerson(std::shared_ptr<Person> person);
     virtual void addFirm(std::shared_ptr<Person> firstOwner);
+    virtual void addFirm(std::shared_ptr<Firm> firm);
     virtual void timeStep();
     std::vector<Offer> market;
     std::vector<JobOffer> laborMarket;
@@ -70,9 +72,9 @@ public:
     bool removeFromInventory(std::string good, double quantity);
     float getMoney();
     void addMoney(float amount);
+    Economy* economy;  // the economy this Agent is a part of
 
 protected:
-    Economy* economy;  // the economy this Agent is a part of
     std::vector<GoodStock> inventory;
     double money;
     void flushInventory();  // remove any goods with zero quantity from the inventory

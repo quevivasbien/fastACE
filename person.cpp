@@ -1,3 +1,4 @@
+#include <vector>
 #include "economy.h"
 
 Person::Person(Economy* economy_) : Agent(economy_) {}
