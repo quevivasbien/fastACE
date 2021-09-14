@@ -2,11 +2,11 @@
 #include <memory>
 #include "economy.h"
 
-void Economy::addPerson() {
+void Economy::add_person() {
     persons.push_back(std::make_shared<Person>(this));
 }
 
-void Economy::addPerson(std::shared_ptr<Person> person) {
+void Economy::add_person(std::shared_ptr<Person> person) {
     // check that person is assigned to this economy
     if (person->economy == this) {
         persons.push_back(person);
@@ -16,11 +16,11 @@ void Economy::addPerson(std::shared_ptr<Person> person) {
     }
 }
 
-void Economy::addFirm(std::shared_ptr<Person> firstOwner) {
+void Economy::add_firm(std::shared_ptr<Person> firstOwner) {
     firms.push_back(std::make_shared<Firm>(this, firstOwner));
 }
 
-void Economy::addFirm(std::shared_ptr<Firm> firm) {
+void Economy::add_firm(std::shared_ptr<Firm> firm) {
     // check that firm is assigned to this economy
     if (firm->economy == this) {
         firms.push_back(firm);
@@ -30,7 +30,7 @@ void Economy::addFirm(std::shared_ptr<Firm> firm) {
     }
 }
 
-void Economy::flushMarket() {
+void Economy::flush_market() {
     unsigned int i = 0;
     while (i < market.size()) {
         if (market[i].claimed) {
@@ -42,7 +42,7 @@ void Economy::flushMarket() {
     }
 }
 
-void Economy::flushLaborMarket() {
+void Economy::flush_labor_market() {
     unsigned int i = 0;
     while (i < laborMarket.size()) {
         if (laborMarket[i].claimed) {
@@ -54,20 +54,20 @@ void Economy::flushLaborMarket() {
     }
 }
 
-void Economy::timeStep() {
+void Economy::time_step() {
     for (unsigned int i = 0; i < firms.size(); i++) {
-        firms[i]->hireLaborers();
+        firms[i]->hire_laborers();
     }
     for (unsigned int i = 0; i < persons.size(); i++) {
-        persons[i]->searchForJob();
-        persons[i]->buyGoods();
-        persons[i]->consumeGoods();
+        persons[i]->search_for_job();
+        persons[i]->buy_goods();
+        persons[i]->consume_goods();
     }
     for (unsigned int i = 0; i < firms.size(); i++) {
         firms[i]->produce();
-        firms[i]->sellGoods();
-        firms[i]->payDividends();
+        firms[i]->sell_goods();
+        firms[i]->pay_dividends();
     }
-    flushMarket();
-    flushLaborMarket();
+    flush_market();
+    flush_labor_market();
 }

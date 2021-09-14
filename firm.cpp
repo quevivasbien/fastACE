@@ -2,14 +2,14 @@
 #include <memory>
 #include "economy.h"
 
-Firm::Firm(Economy* economy_, std::shared_ptr<Agent> owner)
-    : Agent(economy_), owners(std::vector<std::shared_ptr<Agent>> {owner}) {}
+Firm::Firm(Economy* economy, std::shared_ptr<Agent> owner)
+    : Agent(economy), owners(std::vector<std::shared_ptr<Agent>> {owner}) {}
 
-Firm::Firm(Economy* economy_, std::vector<std::shared_ptr<Agent>> owners_, std::vector<GoodStock> inventory_, double money_)
-    : Agent(economy_, inventory_, money_), owners(owners_) {}
+Firm::Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, std::vector<GoodStock> inventory, double money)
+    : Agent(economy, inventory, money), owners(owners) {}
 
 
-void Firm::hireLaborers() {
+void Firm::hire_laborers() {
     // as a toy example, create a single job listing for 1 unit of labor, with wage being whatever money the firm has
     JobOffer newJobOffer {
         this,
@@ -26,18 +26,18 @@ void Firm::produce() {
     for (unsigned int i = 0; i < jobs.size(); i++) {
         totalLabor += jobs[i].labor;
     }
-    addToInventory("defaultGood", totalLabor);
+    add_to_inventory("defaultGood", totalLabor);
 }
 
-void Firm::payDividends() {
+void Firm::pay_dividends() {
     // as a toy example, evenly divide money between all owners
     double moneyPerOwner = money / owners.size();
     for (unsigned int i = 0; i < owners.size(); i++) {
-        owners[i]->addMoney(moneyPerOwner);
+        owners[i]->add_money(moneyPerOwner);
     }
     money = 0;
 }
 
-void Firm::addJob(Job job) {
+void Firm::add_job(Job job) {
     jobs.push_back(job);
 }

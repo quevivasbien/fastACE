@@ -3,14 +3,14 @@
 #include "economy.h"
 
 
-Agent::Agent(Economy* economy_) : economy(economy_), money(0) {}
+Agent::Agent(Economy* economy) : economy(economy), money(0) {}
 
 Agent::Agent(
-    Economy* economy_, std::vector<GoodStock> inventory_, double money_
-) : economy(economy_), inventory(inventory_), money(money_) {}
+    Economy* economy, std::vector<GoodStock> inventory, double money
+) : economy(economy), inventory(inventory), money(money) {}
 
 
-void Agent::addToInventory(std::string good, double quantity) {
+void Agent::add_to_inventory(std::string good, double quantity) {
     bool dont_have = true;
     for (unsigned int i = 0; i < inventory.size(); i++) {
         if (inventory[i].good == good) {
@@ -28,7 +28,7 @@ void Agent::addToInventory(std::string good, double quantity) {
     }
 }
 
-bool Agent::removeFromInventory(std::string good, double quantity) {
+bool Agent::remove_from_inventory(std::string good, double quantity) {
     // removes quantity of good from inventory, if that quantity is available
     for (unsigned int i = 0; i < inventory.size(); i++) {
         if (inventory[i].good == good) {
@@ -45,15 +45,15 @@ bool Agent::removeFromInventory(std::string good, double quantity) {
     return false;
 }
 
-float Agent::getMoney() {
+float Agent::get_money() {
     return money;
 }
 
-void Agent::addMoney(float amount) {
+void Agent::add_money(float amount) {
     money += amount;
 }
 
-void Agent::flushInventory() {
+void Agent::flush_inventory() {
     // deletes all empty goods from inventory
     unsigned int i = 0;
     while (i < inventory.size()) {
@@ -66,16 +66,16 @@ void Agent::flushInventory() {
     }
 }
 
-bool Agent::acceptOffer(unsigned int i) {
+bool Agent::accept_offer(unsigned int i) {
     Offer offer = economy->market[i];
     // check if the offer is still available and is affordable before claiming
     if (!(offer.claimed || (money < offer.price))) {
         offer.claimed = true;
         // take the good if the seller actually has it
-        bool transactionSuccess = offer.offerer->removeFromInventory(offer.good, offer.quantity);
+        bool transactionSuccess = offer.offerer->remove_from_inventory(offer.good, offer.quantity);
         if (transactionSuccess) {
             // add to buyer inventory
-            addToInventory(offer.good, offer.quantity);
+            add_to_inventory(offer.good, offer.quantity);
             // exchange money
             money -= offer.price;
             offer.offerer->money += offer.price;
@@ -85,7 +85,7 @@ bool Agent::acceptOffer(unsigned int i) {
     return false;  // unsuccessful
 }
 
-bool Agent::createOffer(std::string good, double quantity, double price) {
+bool Agent::create_offer(std::string good, double quantity, double price) {
     // check that the agent actually has the needed good and quantity before adding to market
     bool hasGood = false;
     for (unsigned int i = 0; i < inventory.size(); i++) {
@@ -111,11 +111,11 @@ bool Agent::createOffer(std::string good, double quantity, double price) {
     }
 }
 
-void Agent::buyGoods() {
+void Agent::buy_goods() {
     // as a toy example, just go through the available goods and buy until out of money
     for (unsigned int i = 0; i < economy->market.size(); i++) {
         if (money >= 0) {
-            acceptOffer(i);
+            accept_offer(i);
         }
         else {
             break;
@@ -123,9 +123,9 @@ void Agent::buyGoods() {
     }
 }
 
-void Agent::sellGoods() {
+void Agent::sell_goods() {
     // as a toy example, just offer all goods in inventory for sale for price 1
     for (unsigned int i = 0; i < inventory.size(); i++) {
-        createOffer(inventory[i].good, inventory[i].quantity, 1.0);
+        create_offer(inventory[i].good, inventory[i].quantity, 1.0);
     }
 }
