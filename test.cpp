@@ -1,19 +1,16 @@
 #include <iostream>
+#include <vector>
 #include <memory>
 #include "economy.h"
+#include "persons/utilMaximizer.h"
 
 const int time_steps = 10;
 
 int main() {
     Economy economy;
-    economy.add_person();
-    economy.persons[0]->add_money(10);
-    economy.add_firm(economy.persons[0]);
-    for (int i = 0; i < time_steps; i++) {
-        std::cout << i << std::endl;
-        economy.time_step();
-        std::cout << economy.persons[0]->get_money() << std::endl;
-        std::cout << economy.firms[0]->get_money() << std::endl;
-    }
+    std::shared_ptr<UtilMaximizer> person = std::make_shared<UtilMaximizer>(&economy);
+    economy.add_person(person);
+    std::vector<double> vector {1.0, 1.0};
+    std::cout << person->u(vector) << std::endl;
     return 0;
 }

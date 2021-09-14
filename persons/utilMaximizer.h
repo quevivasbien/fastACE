@@ -9,9 +9,7 @@ public:
     UtilMaximizer(Economy* economy);
     UtilMaximizer(Economy* economy, std::vector<GoodStock> inventory, double money, VectorInFloatOut utilityFunction);
     VectorInFloatOut utilityFunction;
-    double u(const std::vector<double>& quantities) {
-        return utilityFunction.f(quantities, numGoods);
-    }
+    double u(const std::vector<double>& quantities);
 private:
     unsigned int numGoods;
 };
