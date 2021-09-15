@@ -1,5 +1,5 @@
-#include "../economy.h"
-#include "../functions/vecToScalar.h"
+#include "economy.h"
+#include "functions/vecToScalar.h"
 #include "utilMaxer.h"
 
 const double defaultCDtfp = 1.0;

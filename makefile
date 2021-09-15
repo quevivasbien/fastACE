@@ -1,28 +1,41 @@
 CC = g++
-CFLAGS = -Wall -O2
-MAIN = test
 
-test: test.o economy.o agent.o person.o firm.o vecToScalar.o utilMaxer.o
-	$(CC) $(CFLAGS) -o test test.o economy.o agent.o person.o firm.o \
-	vecToScalar.o utilMaxer.o
+SRC = src
+PERSONS_SRC = $(SRC)/persons
+FIRMS_SRC = $(SRC)/firms
+FUNCTIONS_SRC = $(SRC)/functions
+OBJ = obj
+BIN = bin
 
-test.o: test.cpp economy.h
-	$(CC) $(CFLAGS) -c test.cpp
+# set EIGEN_PATH to the path to the Eigen library
+EIGEN_PATH = ../eigen
+EIGEN_UNSUPP = $(EIGEN_PATH)/unsupported
 
-economy.o: economy.cpp economy.h
-	$(CC) $(CFLAGS) -c economy.cpp
+INCLUDES = -I $(SRC) -I $(EIGEN_PATH) -I $(EIGEN_UNSUPP)
 
-agent.o: agent.cpp economy.h
-	$(CC) $(CFLAGS) -c agent.cpp
+# set CFLAGS however you want, though don't remove $(INCLUDES)
+CFLAGS = $(INCLUDES) -Wall -O2
 
-person.o: person.cpp economy.h
-	$(CC) $(CFLAGS) -c person.cpp
+# the following just figure out where all the source code and object files are
+SOURCES = $(wildcard $(SRC)/*.cpp)
+OBJECTS = $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SOURCES))
+PERSONS_SOURCES = $(wildcard $(PERSONS_SRC)/*.cpp)
+PERSONS_OBJECTS = $(patsubst $(PERSONS_SRC)/%.cpp, $(OBJ)/%.o, $(PERSONS_SOURCES))
+FIRMS_SOURCES = $(wildcard $(FIRMS_SRC)/*.cpp)
+FIRMS_OBJECTS = $(patsubst $(FIRMS_SRC)/%.cpp, $(OBJ)/%.o, $(FIRMS_SOURCES))
+FUNCTIONS_SOURCES = $(wildcard $(FUNCTIONS_SRC)/*.cpp)
+FUNCTIONS_OBJECTS = $(patsubst $(FUNCTIONS_SRC)/%.cpp, $(OBJ)/%.o, $(FUNCTIONS_SOURCES))
 
-firm.o: firm.cpp economy.h
-	$(CC) $(CFLAGS) -c firm.cpp
+# link all object files
+$(BIN)/main: $(OBJECTS) $(PERSONS_OBJECTS) $(FIRMS_OBJECTS) $(FUNCTIONS_OBJECTS)
+	$(CC) $(CFLAGS) $^ -o $@
 
-vecToScalar.o: functions/vecToScalar.cpp functions/vecToScalar.h
-	$(CC) $(CFLAGS) -c functions/vecToScalar.cpp
+# compile source code
+$(OBJ)/%.o: $(SRC)/%.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
 
-utilMaxer.o: persons/utilMaxer.cpp economy.h persons/utilMaxer.h functions/vecToScalar.h
-	$(CC) $(CFLAGS) -c persons/utilMaxer.cpp
+$(OBJ)/%.o: $(PERSONS_SRC)/%.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ)/%.o: $(FUNCTIONS_SRC)/%.cpp
+	$(CC) $(CFLAGS) -c $< -o $@

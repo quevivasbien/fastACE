@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <functional>
-#include "linalg.h"
 
 using Vec = std::vector<double>;
 
