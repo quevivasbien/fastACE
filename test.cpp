@@ -2,15 +2,12 @@
 #include <vector>
 #include <memory>
 #include "economy.h"
-#include "persons/utilMaximizer.h"
+#include "persons/utilMaxer.h"
 
 const int time_steps = 10;
 
 int main() {
-    Economy economy;
-    std::shared_ptr<UtilMaximizer> person = std::make_shared<UtilMaximizer>(&economy);
-    economy.add_person(person);
-    std::vector<double> vector {1.0, 1.0};
-    std::cout << person->u(vector) << std::endl;
+    CobbDouglas cobbDouglas(1.0, std::vector<double>({0.5, 0.5}));
+    std::cout << cobbDouglas.f(std::vector<double>({1.0, 1.0})) << std::endl;
     return 0;
 }

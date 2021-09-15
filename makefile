@@ -2,9 +2,9 @@ CC = g++
 CFLAGS = -Wall -O2
 MAIN = test
 
-test: test.o economy.o agent.o person.o firm.o vectorInFloatOut.o utilMaximizer.o
+test: test.o economy.o agent.o person.o firm.o vecToScalar.o utilMaxer.o
 	$(CC) $(CFLAGS) -o test test.o economy.o agent.o person.o firm.o \
-	vectorInFloatOut.o utilMaximizer.o
+	vecToScalar.o utilMaxer.o
 
 test.o: test.cpp economy.h
 	$(CC) $(CFLAGS) -c test.cpp
@@ -21,8 +21,8 @@ person.o: person.cpp economy.h
 firm.o: firm.cpp economy.h
 	$(CC) $(CFLAGS) -c firm.cpp
 
-vectorInFloatOut.o: functions/vectorInFloatOut.cpp functions/vectorInFloatOut.h
-	$(CC) $(CFLAGS) -c functions/vectorInFloatOut.cpp
+vecToScalar.o: functions/vecToScalar.cpp functions/vecToScalar.h
+	$(CC) $(CFLAGS) -c functions/vecToScalar.cpp
 
-utilMaximizer.o: persons/utilMaximizer.cpp economy.h persons/utilMaximizer.h functions/vectorInFloatOut.h
-	$(CC) $(CFLAGS) -c persons/utilMaximizer.cpp
+utilMaxer.o: persons/utilMaxer.cpp economy.h persons/utilMaxer.h functions/vecToScalar.h
+	$(CC) $(CFLAGS) -c persons/utilMaxer.cpp
