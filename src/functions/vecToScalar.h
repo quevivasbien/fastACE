@@ -1,55 +1,49 @@
 #ifndef VECTOSCALAR_H
 #define VECTOSCALAR_H
 
-#include <vector>
-#include <functional>
+#include <Eigen/Dense>
 
-using Vec = std::vector<double>;
+using Vec = Eigen::ArrayXd;
 
-// returns sum of values
-double sum(const Vec& values);
-// same thing, with length of values pre-specified
-double sum(const Vec& values, unsigned int length);
 
-// returns minimum of values
-double min(const Vec& values);
-// '' with length of values pre-specified
-double min(const Vec& values, unsigned int length);
-// '' with starting index given as a pointer, starting index will be modified in place to be the index of the max value
+// returns max value in values with starting index given as a pointer
+// starting index will be modified in place to be the index of the max value
 double min(const Vec& values, unsigned int length, unsigned int* startIdx);
-
-// normalizes a vector so that it sums to one
-void set_to_sum_one(Vec& vector);
-// '' length given...
-void set_to_sum_one(Vec& vector, unsigned int length);
-
-// applies a scalar function to each element of a vector
-Vec apply_to_each(Vec& vector, std::function<double(double)> func);
-Vec apply_to_each(Vec& vector, std::function<double(double)> func, unsigned int length);
-
-// multiplies two equal-length vectors elementwise
-Vec multiply(const Vec& vector1, const Vec& vector2);
-Vec multiply(const Vec& vector1, const Vec& vector2, unsigned int length);
 
 
 class VecToScalar {
     // base class meant to store parameters for a real-valued function & its derivatives
 public:
+    // f is the function managed by VecToScalar, it is scalar-valued function of vector of doubles
     virtual double f(const Vec& quantities);
+    // df is the derivative of f with respect to the idx'th input quantity
     virtual double df(const Vec& quantities, unsigned int idx);
+    unsigned int getNumInputs();
 protected:
     void check_no_length_change(const Vec& candidate);
     unsigned int numInputs;
 };
 
 
+class Linear : public VecToScalar {
+    // Perfect substitutes
+public:
+    Linear(const Vec& productivities);
+    virtual double f(const Vec& quantities);
+    virtual double df(const Vec& quantities, unsigned int idx);
+    void set_productivities(const Vec& newProductivities);
+protected:
+    Vec productivities;
+};
+
+
 class CobbDouglas : public VecToScalar {
 public:
-    CobbDouglas(double tfp, Vec elasticities);
+    CobbDouglas(double tfp, const Vec& elasticities);
     virtual double f(const Vec& quantities);
     virtual double df(const Vec& quantities, unsigned int idx);
     void set_tfp(double newTfp);
-    virtual void set_elasticities(Vec newElasticities);
+    virtual void set_elasticities(const Vec& newElasticities);
 protected:
     double tfp;
     Vec elasticities;
@@ -58,45 +52,63 @@ protected:
 
 class CobbDouglasCRS : public CobbDouglas {
 public:
-    CobbDouglasCRS(double tfp, Vec elasticities);
-    void set_elasticities(Vec newElasticities);
+    CobbDouglasCRS(double tfp, const Vec& elasticities);
+    void set_elasticities(const Vec& newElasticities);
 };
 
 
 class StoneGeary : public CobbDouglas {
 public:
-    StoneGeary(double tfp, Vec elasticities, Vec thresholdParams);
+    StoneGeary(double tfp, const Vec& elasticities, const Vec& thresholdParams);
     virtual double f(const Vec& quantities);
     virtual double df(const Vec& quantities, unsigned int idx);
-    void set_thresholdParams(Vec newThresholdParams);
+    void set_thresholdParams(const Vec& newThresholdParams);
 protected:
     Vec thresholdParams;
 };
 
 
 class Leontief : public VecToScalar {
+    // Perfect compliments
 public:
-    Leontief(Vec productivities);
+    Leontief(const Vec& productivities);
     virtual double f(const Vec& quantities);
     virtual double df(const Vec& quantities, unsigned int idx);
-    void set_productivities(Vec newProductivities);
+    void set_productivities(const Vec& newProductivities);
 protected:
     Vec productivities;
 };
 
 
 class CES : public VecToScalar {
+    // Constant elasticity of substitution
 public:
-    CES(double tfp, Vec shareParams, double elasticityOfSubstitution);
+    CES(double tfp, const Vec& shareParams, double elasticityOfSubstitution);
     virtual double f(const Vec& quantities);
     virtual double df(const Vec& quantities, unsigned int idx);
-    void set_shareParams(Vec newShareParams);
+    void set_shareParams(const Vec& newShareParams);
     void set_substitutionParam(double newElasticityOfSubstitution);
 protected:
     double tfp;
     Vec shareParams;
     double substitutionParam;
     double get_inner_sum(const Vec& quantities);
+};
+
+
+class ProfitFunc : public VecToScalar {
+    // Encapsulates another VecToScalar to return the profit for different levels of production
+public:
+    ProfitFunc(double price, const Vec& factorPrices, const VecToScalar& prodFunc);
+    virtual double f(const Vec& quantities);
+    virtual double df(const Vec& quantities, unsigned int idx);
+    void set_price(double newPrice);
+    void set_factorPrices(const Vec& newFactorPrices);
+    void set_prodFunc(VecToScalar newProdFunc);
+protected:
+    double price;
+    VecToScalar prodFunc;
+    Linear costFunc;
 };
 
 #endif

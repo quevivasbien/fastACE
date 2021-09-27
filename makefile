@@ -9,9 +9,8 @@ BIN = bin
 
 # set EIGEN_PATH to the path to the Eigen library
 EIGEN_PATH = ../eigen
-EIGEN_UNSUPP = $(EIGEN_PATH)/unsupported
 
-INCLUDES = -I $(SRC) -I $(EIGEN_PATH) -I $(EIGEN_UNSUPP)
+INCLUDES = -I $(SRC) -I $(EIGEN_PATH)
 
 # set CFLAGS however you want, though don't remove $(INCLUDES)
 CFLAGS = $(INCLUDES) -Wall -O2

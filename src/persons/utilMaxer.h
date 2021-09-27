@@ -9,7 +9,7 @@ public:
     UtilMaxer(Economy* economy);
     UtilMaxer(Economy* economy, std::vector<GoodStock> inventory, double money, VecToScalar utilFunc);
     VecToScalar utilFunc;
-    double u(const std::vector<double>& quantities);  // alias for utilFunc.f
+    double u(const Vec& quantities);  // alias for utilFunc.f
 private:
     unsigned int numGoods;
 };

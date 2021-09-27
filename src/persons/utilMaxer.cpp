@@ -3,7 +3,7 @@
 #include "utilMaxer.h"
 
 const double defaultCDtfp = 1.0;
-const std::vector<double> defaultCDParams = {0.5, 0.5};
+const Eigen::Array<double, 2, 1> defaultCDParams = {0.5, 0.5};
 
 UtilMaxer::UtilMaxer(
     Economy* economy
@@ -13,6 +13,6 @@ UtilMaxer::UtilMaxer(
     Economy* economy, std::vector<GoodStock> inventory, double money, VecToScalar utilFunc
 ) : Person(economy, inventory, money), utilFunc(utilFunc) {}
 
-double UtilMaxer::u(const std::vector<double>& quantities) {
+double UtilMaxer::u(const Vec& quantities) {
     return utilFunc.f(quantities);
 }
