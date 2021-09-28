@@ -1,9 +1,12 @@
 #include <iostream>
-#include "functions/solve.h"
+#include "economy.h"
+#include "vecToScalar.h"
 
 int main() {
-    Eigen::VectorXd zInit(2);
-    zInit << 1, -1;
-    testHimmelblau(zInit);
+    Economy economy;
+    std::cout << economy.market.size() << std::endl;
+    Vec v(2);
+    v << 0.5, 0.5;
+    std::cout << v.transpose() << std::endl;
     return 0;
 }
