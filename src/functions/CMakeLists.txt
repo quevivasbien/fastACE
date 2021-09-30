@@ -1,4 +1,4 @@
-target_sources(lib PRIVATE solve.h vecToScalar.h vecToScalar.cpp)
+target_sources(lib PRIVATE solve.h solve.cpp vecToScalar.h vecToScalar.cpp vecToVec.h vecToVec.cpp)
 
 find_package(Eigen3 REQUIRED)
 find_package(ifopt REQUIRED)

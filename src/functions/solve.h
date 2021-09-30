@@ -1,58 +1,90 @@
 #ifndef SOLVE_H
 #define SOLVE_H
 
-#include <iostream>
+#include <memory>
 #include <string>
+#include <vector>
+#include <assert.h>
 #include <ifopt/variable_set.h>
 #include <ifopt/constraint_set.h>
 #include <ifopt/cost_term.h>
+#include "vecToVec.h"
+#include "vecToScalar.h"
 
-namespace ifopt {
-using Eigen::Vector2d;
+using Jacobian = Eigen::SparseMatrix<double, Eigen::RowMajor>;
 
 
-class ExVariables : public VariableSet {
+class VarSet : public ifopt::VariableSet {
+    // a friendlier wrapper for variable sets
 public:
-  // Every variable set has a name, here "var_set1". this allows the constraints
-  // and costs to define values and Jacobians specifically w.r.t this variable set.
-  ExVariables() : ExVariables("var_set1") {};
-  ExVariables(const std::string& name) : VariableSet(2, name)
-  {
-    // the initial values where the NLP starts iterating from
-    x0_ = 3.5;
-    x1_ = 1.5;
-  }
+    VarSet(const std::string& name, int numVars);
+    VarSet(const std::string& name, int numVars, Eigen::VectorXd initVals);
+    VarSet(const std::string& name, int numVars, Eigen::VectorXd initVals, std::vector<ifopt::Bounds> bounds);
 
-  // Here is where you can transform the Eigen::Vector into whatever
-  // internal representation of your variables you have (here two doubles, but
-  // can also be complex classes such as splines, etc..
-  void SetVariables(const VectorXd& x) override
-  {
-    x0_ = x(0);
-    x1_ = x(1);
-  };
+    void SetVariables(const Eigen::VectorXd& x) override {
+        assert(x.size() == GetRows());
+        vars = x;
+    }
 
-  // Here is the reverse transformation from the internal representation to
-  // to the Eigen::Vector
-  VectorXd GetValues() const override
-  {
-    return Vector2d(x0_, x1_);
-  };
+    Eigen::VectorXd GetValues() const override {
+        return vars;
+    }
 
-  // Each variable has an upper and lower bound set here
-  VecBound GetBounds() const override
-  {
-    VecBound bounds(GetRows());
-    bounds.at(0) = Bounds(-1.0, 1.0);
-    bounds.at(1) = NoBound;
-    return bounds;
-  }
+    std::vector<ifopt::Bounds> GetBounds() const override {
+        return bounds;
+    };
 
 private:
-  double x0_, x1_;
+    Eigen::VectorXd vars;
+    std::vector<ifopt::Bounds> bounds;
 };
 
-}
+
+class ConstrSet : public ifopt::ConstraintSet {
+    // wrapper for constraint sets
+public:
+    ConstrSet(
+        const std::string& name,  // the name for this constraint
+        const std::string& varName,  // the name of the varSet this constraint applies to
+        int numConstrs,  // number of constraints
+        std::shared_ptr<VecToVec> constrFunc,  // vector function to apply to inputs
+        std::vector<ifopt::Bounds> bounds  // bounds on output of constrFunc
+    );
+
+    Eigen::VectorXd GetValues() const override;
+
+    std::vector<ifopt::Bounds> GetBounds() const override {
+        return bounds;
+    }
+
+    void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override;
+
+    void FillJacobianBlock(Jacobian& jac_block) const;
+
+private:
+    std::string varName;
+    std::shared_ptr<VecToVec> constrFunc;
+    std::vector<ifopt::Bounds> bounds;
+};
+
+
+class Objective : public ifopt::CostTerm {
+    // wrapper for cost terms.
+    // note that this actually is framed in terms of a function we want to _maximize_, not minimize
+    // since in economics that's typically what we're trying to do
+public:
+    Objective(const std::string& name, const std::string& varName, std::shared_ptr<VecToScalar> objectiveFunc);
+
+    double GetCost() const override;
+
+    void FillJacobianBlock(std::string var_set, Jacobian& jac) const override;
+
+    void FillJacobianBlock(Jacobian& jac) const;
+
+private:
+    std::string varName;
+    std::shared_ptr<VecToScalar> objectiveFunc;
+};
 
 
 #endif
