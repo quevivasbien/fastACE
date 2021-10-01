@@ -8,6 +8,8 @@
 #include <ifopt/variable_set.h>
 #include <ifopt/constraint_set.h>
 #include <ifopt/cost_term.h>
+#include <ifopt/problem.h>
+#include <ifopt/ipopt_solver.h>
 #include "vecToVec.h"
 #include "vecToScalar.h"
 
@@ -84,6 +86,25 @@ public:
 private:
     std::string varName;
     std::shared_ptr<VecToScalar> objectiveFunc;
+};
+
+
+void configure_to_default_solver(std::shared_ptr<ifopt::IpoptSolver> solver);
+
+
+class Problem {
+    // contains a variable set, constraint set, and objective
+    // include functions for solving and changing solver options
+public:
+    Problem(std::shared_ptr<VarSet> varSet, std::shared_ptr<ConstrSet> constrSet, std::shared_ptr<Objective> objective);
+
+    Eigen::ArrayXd solve();
+
+    void changeSolver(std::shared_ptr<ifopt::IpoptSolver> newSolver);
+
+private:
+    ifopt::Problem problem;
+    std::shared_ptr<ifopt::IpoptSolver> solver = std::make_shared<ifopt::IpoptSolver>();
 };
 
 

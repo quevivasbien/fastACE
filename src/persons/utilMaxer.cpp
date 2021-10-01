@@ -1,5 +1,3 @@
-#include "economy.h"
-#include "vecToScalar.h"
 #include "utilMaxer.h"
 
 const double defaultCDtfp = 1.0;
@@ -10,7 +8,10 @@ UtilMaxer::UtilMaxer(
 ) : Person(economy), utilFunc(std::make_shared<CobbDouglas>(defaultCDtfp, defaultCDParams)) {}
 
 UtilMaxer::UtilMaxer(
-    Economy* economy, std::vector<GoodStock> inventory, double money, std::shared_ptr<VecToScalar> utilFunc
+    Economy* economy,
+    std::vector<double> inventory,
+    double money,
+    std::shared_ptr<VecToScalar> utilFunc
 ) : Person(economy, inventory, money), utilFunc(utilFunc) {}
 
 double UtilMaxer::u(const Vec& quantities) {

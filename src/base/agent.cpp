@@ -1,131 +1,148 @@
-#include <string>
-#include <vector>
-#include "economy.h"
+#include "base.h"
 
 
-Agent::Agent(Economy* economy) : economy(economy), money(0) {}
+Agent::Agent(Economy* economy) : economy(economy), money(0), time(economy->get_time()) {
+    inventory = std::vector<double>(economy->get_numGoods());
+}
 
 Agent::Agent(
-    Economy* economy, std::vector<GoodStock> inventory, double money
-) : economy(economy), inventory(inventory), money(money) {}
-
-
-void Agent::add_to_inventory(std::string good, double quantity) {
-    bool dont_have = true;
-    for (unsigned int i = 0; i < inventory.size(); i++) {
-        if (inventory[i].good == good) {
-            inventory[i].quantity += quantity;
-            dont_have = false;
-            break;
-        }
-    }
-    if (dont_have) {
-        GoodStock newGoodStock {
-            good,
-            quantity
-        };
-        inventory.push_back(newGoodStock);
-    }
+    Economy* economy, std::vector<double> inventory, double money
+) : economy(economy), inventory(inventory), money(money), time(economy->get_time()) {
+    assert(inventory.size() == economy->get_numGoods());
 }
 
-bool Agent::remove_from_inventory(std::string good, double quantity) {
-    // removes quantity of good from inventory, if that quantity is available
-    for (unsigned int i = 0; i < inventory.size(); i++) {
-        if (inventory[i].good == good) {
-            double difference = inventory[i].quantity - quantity;
-            if (difference < 0) {
-                return false;  // unsuccessful if difference < 0
-            }
-            else {
-                inventory[i].quantity = difference;
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
-float Agent::get_money() {
-    return money;
-}
-
-void Agent::add_money(float amount) {
-    money += amount;
-}
-
-void Agent::flush_inventory() {
-    // deletes all empty goods from inventory
-    unsigned int i = 0;
-    while (i < inventory.size()) {
-        if (inventory[i].quantity == 0) {
-            inventory.erase(inventory.begin() + i);
-        }
-        else {
-            i++;
-        }
-    }
-}
-
-bool Agent::accept_offer(unsigned int i) {
-    Offer offer = economy->market[i];
-    // check if the offer is still available and is affordable before claiming
-    if (!(offer.claimed || (money < offer.price))) {
-        offer.claimed = true;
-        // take the good if the seller actually has it
-        bool transactionSuccess = offer.offerer->remove_from_inventory(offer.good, offer.quantity);
-        if (transactionSuccess) {
-            // add to buyer inventory
-            add_to_inventory(offer.good, offer.quantity);
-            // exchange money
-            money -= offer.price;
-            offer.offerer->money += offer.price;
-            return true;  // successful
-        }
-    }
-    return false;  // unsuccessful
-}
-
-bool Agent::create_offer(std::string good, double quantity, double price) {
-    // check that the agent actually has the needed good and quantity before adding to market
-    bool hasGood = false;
-    for (unsigned int i = 0; i < inventory.size(); i++) {
-        if (inventory[i].good == good) {
-            if (inventory[i].quantity >= quantity) {
-                hasGood = true;
-            }
-            break;
-        }
-    }
-    if (hasGood) {
-        Offer newOffer {
-            this,
-            good,
-            quantity,
-            price
-        };
-        economy->market.push_back(newOffer);
-        return true;  // successful
+bool Agent::time_step() {
+    if (time != economy->get_time()) {
+        time++;
+        buy_goods();
+        sell_goods();
+        flush_myOffers();
+        flush_myResponses();
+        return true;  // completed successfully
     }
     else {
-        return false;  // unsuccessful
+        return false;  // did not step
     }
 }
 
+unsigned int Agent::get_time() const { return time; };
+Economy* Agent::get_economy() const { return economy; }
+double Agent::get_money() const { return money; }
+
+
 void Agent::buy_goods() {
-    // as a toy example, just go through the available goods and buy until out of money
-    for (unsigned int i = 0; i < economy->market.size(); i++) {
-        if (money >= 0) {
-            accept_offer(i);
-        }
-        else {
-            break;
+    const std::vector<std::shared_ptr<Offer>> market = economy->get_market();
+    for (auto offer : market) {
+        if (offer->is_available()) {
+            look_at_offer(offer);
         }
     }
 }
 
 void Agent::sell_goods() {
-    // as a toy example, just offer all goods in inventory for sale for price 1
-    for (unsigned int i = 0; i < inventory.size(); i++) {
-        create_offer(inventory[i].good, inventory[i].quantity, 1.0);
+    post_new_offers();
+    check_my_offers();
+}
+
+
+void Agent::add_to_inventory(unsigned int good_id, double quantity) {
+    inventory[good_id] += quantity;
+}
+
+void Agent::add_money(double amount) {
+    money += amount;
+}
+
+void Agent::post_offer(std::shared_ptr<Offer> offer) {
+    // check that the offerer is the person listing it
+    assert(offer->get_offerer() == shared_from_this());
+    economy->add_offer(offer);
+    myOffers.push_back(offer);
+}
+
+void Agent::respond_to_offer(std::shared_ptr<Offer> offer) {
+    offer->add_response(Response(shared_from_this(), time));
+    myResponses.push_back(offer);
+}
+
+void Agent::check_my_offers() {
+    for (auto offer : myOffers) {
+        if (offer->is_available()) {
+            review_offer_responses(offer);
+        }
     }
+}
+
+bool Agent::accept_offer_response(std::shared_ptr<Offer> offer, const Response& response) {
+    // first check that offer is owned by this agent
+    assert(offer->get_offerer() == shared_from_this());
+    // make sure it's still available and response is at least 1 period old before proceeding
+    if (!(offer->is_available() && response.time > offer->get_time_created())) {
+        return false;
+    }
+    // make sure this agent actually has enough goods
+    const std::vector<double> quantities = offer->get_quantities();
+    for (auto i : offer->get_good_ids()) {
+        if (inventory[i] < quantities[i]) {
+            // mark for removal and return false
+            offer->amount_left = 0;
+            return false;
+        }
+    }
+    // send to responder for finalization
+    if (response.responder->finalize_offer(offer)) {
+        // complete transaction
+        money += offer->get_price();
+        for (auto i : offer->get_good_ids()) {
+            inventory[i] -= offer->get_quantities()[i];
+        }
+        // change listing to -= 1 amount available
+        offer->amount_left -= 1;
+        // signal transaction successful
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+bool Agent::finalize_offer(std::shared_ptr<Offer> offer) {
+    // check that the agent actually responded to this offer
+    bool responded = false;
+    for (auto resp : myResponses) {
+        if (resp == offer) {
+            responded = true;
+            break;
+        }
+    }
+    if (!responded) {
+        return false;
+    }
+    // check that the agent has enough money
+    if (money >= offer->get_price()) {
+        // complete transaction
+        money -= offer->get_price();
+        std::vector<double> quantities = offer->get_quantities();
+        for (auto i : offer->get_good_ids()) {
+            inventory[i] += offer->get_quantities()[i];
+        }
+        // signal transaction successful
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+void Agent::create_firm() {
+    economy->add_firm(shared_from_this());
+}
+
+void Agent::flush_myOffers() {
+    flush_offers<Offer>(myOffers);
+}
+
+void Agent::flush_myResponses() {
+    flush_offers<Offer>(myResponses);
 }

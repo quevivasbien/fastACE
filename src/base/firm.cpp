@@ -1,43 +1,50 @@
 #include <vector>
 #include <memory>
-#include "economy.h"
+#include "base.h"
 
 Firm::Firm(Economy* economy, std::shared_ptr<Agent> owner)
-    : Agent(economy), owners(std::vector<std::shared_ptr<Agent>> {owner}) {}
-
-Firm::Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, std::vector<GoodStock> inventory, double money)
-    : Agent(economy, inventory, money), owners(owners) {}
-
-
-void Firm::hire_laborers() {
-    // as a toy example, create a single job listing for 1 unit of labor, with wage being whatever money the firm has
-    JobOffer newJobOffer {
-        this,
-        1,
-        money
-    };
-    economy->laborMarket.push_back(newJobOffer);
-}
-
-void Firm::produce() {
-    // we can define a production function here
-    // as a toy example, say that the firm can produce one "defaultGood" with every unit of labor
-    double totalLabor = 0;
-    for (unsigned int i = 0; i < jobs.size(); i++) {
-        totalLabor += jobs[i].labor;
+    : Agent(economy) {
+        owners.push_back(owner);
+        economy->add_firm(get_shared_firm());
     }
-    add_to_inventory("defaultGood", totalLabor);
-}
 
-void Firm::pay_dividends() {
-    // as a toy example, evenly divide money between all owners
-    double moneyPerOwner = money / owners.size();
-    for (unsigned int i = 0; i < owners.size(); i++) {
-        owners[i]->add_money(moneyPerOwner);
+Firm::Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, std::vector<double> inventory, double money)
+    : Agent(economy, inventory, money), owners(owners) {
+        economy->add_firm(get_shared_firm());
     }
-    money = 0;
+
+
+std::shared_ptr<Firm> Firm::get_shared_firm() {
+    return std::static_pointer_cast<Firm>(shared_from_this());
 }
 
-void Firm::add_job(Job job) {
-    jobs.push_back(job);
+
+bool Firm::time_step() {
+    if (!Agent::time_step()) {
+        return false;
+    }
+    else {
+        search_for_laborers();
+        produce();
+        flush_myJobOffers();
+        return true;
+    }
+}
+
+void Firm::post_jobOffer(std::shared_ptr<JobOffer> jobOffer) {
+    assert(jobOffer->get_offerer() == shared_from_this());
+    economy->add_jobOffer(jobOffer);
+    myJobOffers.push_back(jobOffer);
+}
+
+void Firm::check_my_jobOffers() {
+    for (auto jobOffer : myJobOffers) {
+        if (jobOffer->is_available()) {
+            review_jobOffer_responses(jobOffer);
+        }
+    }
+}
+
+void Firm::flush_myJobOffers() {
+    flush_offers<JobOffer>(myJobOffers);
 }

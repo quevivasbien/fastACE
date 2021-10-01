@@ -1,3 +1,4 @@
+#include <iostream>
 #include "solve.h"
 
 VarSet::VarSet(const std::string& name, int numVars) : ifopt::VariableSet(numVars, name), vars(Eigen::VectorXd::Zero(numVars)), bounds(std::vector<ifopt::Bounds>(numVars, ifopt::NoBound)) {}
@@ -58,4 +59,33 @@ void Objective::FillJacobianBlock(std::string var_set, Jacobian& jac) const {
 
 void Objective::FillJacobianBlock(Jacobian& jac) const {
     return FillJacobianBlock(varName, jac);
+}
+
+
+void configure_to_default_solver(std::shared_ptr<ifopt::IpoptSolver> solver) {
+    // use MUMPS as linear solver
+    // if you have the HSL solvers, you should use those instead
+    solver->SetOption("linear_solver", "mumps");
+    // require jacobians to be pre-provided
+    solver->SetOption("jacobian_approximation", "exact");
+    solver->SetOption("print_level", 1);
+}
+
+
+Problem::Problem(std::shared_ptr<VarSet> varSet, std::shared_ptr<ConstrSet> constrSet, std::shared_ptr<Objective> objective) {
+    problem.AddVariableSet(varSet);
+    problem.AddConstraintSet(constrSet);
+    problem.AddCostSet(objective);
+    std::cout << "[1] To here completed successfully..." << std::endl;
+    configure_to_default_solver(solver);
+    std::cout << "[2] To here completed successfully..." << std::endl;
+}
+
+Eigen::ArrayXd Problem::solve() {
+    solver->Solve(problem);
+    return problem.GetOptVariables()->GetValues().array();
+}
+
+void Problem::changeSolver(std::shared_ptr<ifopt::IpoptSolver> newSolver) {
+    solver = newSolver;
 }

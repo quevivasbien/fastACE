@@ -1,43 +1,46 @@
 #include <vector>
-#include "economy.h"
+#include "base.h"
 
-Person::Person(Economy* economy) : Agent(economy) {}
+Person::Person(Economy* economy) : Agent(economy) {
+    economy->add_person(get_shared_person());
+}
 
 Person::Person(
-    Economy* economy, std::vector<GoodStock> inventory, double money
-) : Agent(economy, inventory, money) {}
+    Economy* economy, std::vector<double> inventory, double money
+) : Agent(economy, inventory, money) {
+    economy->add_person(get_shared_person());
+}
 
 
-bool Person::accept_job(unsigned int i) {
-    JobOffer jobOffer = economy->laborMarket[i];
-    // check if the offer is still available, worker still has time for it, and employer can pay the wage
-    if (!(jobOffer.claimed && (labor + jobOffer.labor > 1))) {
-        jobOffer.claimed = true;
-        if (jobOffer.offerer->get_money() >= jobOffer.wage) {
-            Job newJob {
-                this,
-                labor
-            };
-            jobOffer.offerer->add_job(newJob);
-            // update worker's money and available labor
-            money += jobOffer.wage;
-            labor += jobOffer.labor;
-            return true;
-        }
+std::shared_ptr<Person> Person::get_shared_person() {
+    return std::static_pointer_cast<Person>(shared_from_this());
+}
+
+
+bool Person::time_step() {
+    if (!Agent::time_step()) {
+        return false;
     }
-    return false;
+    else {
+        search_for_job();
+        consume_goods();
+        flush_myJobResponses();
+        return true;
+    }
 }
 
 void Person::search_for_job() {
-    // as a toy example, just take available jobs until they can't fit
-    unsigned int i = 0;
-    while ((labor < 1) && (i < economy->laborMarket.size())) {
-        accept_job(i);
-        i++;
+    const std::vector<std::shared_ptr<JobOffer>> jobOffers = economy->get_laborMarket();
+    for (auto jobOffer : jobOffers) {
+        look_at_jobOffer(jobOffer);
     }
 }
 
-void Person::consume_goods() {
-    // as a toy example, just consume everything in inventory
-    inventory.clear();
+void Person::respond_to_jobOffer(std::shared_ptr<JobOffer> jobOffer) {
+    jobOffer->add_response(Response(shared_from_this(), time));
+    myJobResponses.push_back(jobOffer);
+}
+
+void Person::flush_myJobResponses() {
+    flush_offers<JobOffer>(myJobResponses);
 }
