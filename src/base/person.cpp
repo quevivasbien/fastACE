@@ -2,18 +2,6 @@
 #include "base.h"
 #include <iostream>
 
-std::shared_ptr<Person> Person::create(Economy* economy) {
-    std::shared_ptr<Person> person = std::shared_ptr<Person>(new Person(economy));
-    economy->add_person(person);
-    return person;
-}
-
-std::shared_ptr<Person> Person::create(Economy* economy, std::vector<double> inventory, double money) {
-    std::shared_ptr<Person> person = std::shared_ptr<Person>(new Person(economy, inventory, money));
-    economy->add_person(person);
-    return person;
-}
-
 Person::Person(Economy* economy) : Agent(economy) {}
 
 Person::Person(

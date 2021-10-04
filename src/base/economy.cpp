@@ -6,7 +6,7 @@ std::shared_ptr<Person> Economy::add_person() {
     return Person::create(this);
 }
 
-void Economy::add_person(std::shared_ptr<Person> person) {
+void Economy::add_agent(std::shared_ptr<Person> person) {
     assert(person->get_economy() == this);
     persons.push_back(person);
 }
@@ -15,7 +15,7 @@ std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
     return Firm::create(this, firstOwner);
 }
 
-void Economy::add_firm(std::shared_ptr<Firm> firm) {
+void Economy::add_agent(std::shared_ptr<Firm> firm) {
     assert(firm->get_economy() == this);
     firms.push_back(firm);
 }
