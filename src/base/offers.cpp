@@ -1,6 +1,20 @@
 #include "base.h"
 
 
+Response::Response(
+    std::shared_ptr<BaseOffer> offer,
+    std::shared_ptr<Agent> responder,
+    unsigned int time
+) : offer(offer), responder(responder), time(time) {}
+
+const std::shared_ptr<BaseOffer> Response::get_offer() const {return offer;}
+const std::shared_ptr<Agent> Response::get_responder() const {return responder;}
+unsigned int Response::get_time() const {return time;}
+
+bool Response::is_available() const {
+    return offer->is_available();
+}
+
 
 BaseOffer::BaseOffer(
     std::shared_ptr<Agent> offerer,
@@ -8,13 +22,20 @@ BaseOffer::BaseOffer(
 ) : offerer(offerer), amount_left(amount_available), time_created(offerer->get_time()) {}
 
 const std::shared_ptr<Agent> BaseOffer::get_offerer() const { return offerer; }
-const std::vector<Response>& BaseOffer::get_responses() const { return responses; }
-void BaseOffer::add_response(Response response) { responses.push_back(response); }
+const std::vector<std::shared_ptr<Response>>& BaseOffer::get_responses() const { return responses; }
+
+std::shared_ptr<Response> BaseOffer::add_response(std::shared_ptr<Agent> responder) {
+    auto response = std::make_shared<Response>(shared_from_this(), responder, responder->get_time());
+    responses.push_back(response);
+    return response;
+}
+
 bool BaseOffer::is_available() {
     // must have some amount remaining
     // & offers cannot receive responses until at least 1 time period after they're listed
     return (amount_left > 0) && (offerer->get_time() > time_created);
 }
+
 unsigned int BaseOffer::get_time_created() const { return time_created; }
 
 
@@ -42,21 +63,3 @@ JobOffer::JobOffer(
 
 double JobOffer::get_labor() { return labor; }
 double JobOffer::get_wage() const { return wage; };
-
-
-
-template<typename T>
-void flush_offers(std::vector<std::shared_ptr<T>>& offers) {
-    // figure out which offers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < offers.size(); i++) {
-        if (!offers[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those offers
-    for (auto i : idxs) {
-        offers[i] = offers.back();
-        offers.pop_back();
-    }
-}

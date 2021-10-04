@@ -1,5 +1,14 @@
 #include "base.h"
 
+std::shared_ptr<Agent> Agent::create(Economy* economy) {
+    return std::shared_ptr<Agent>(new Agent(economy));
+}
+
+std::shared_ptr<Agent> Agent::create(
+    Economy* economy, std::vector<double> inventory, double money
+) {
+    return std::shared_ptr<Agent>(new Agent(economy, inventory, money));
+}
 
 Agent::Agent(Economy* economy) : economy(economy), money(0), time(economy->get_time()) {
     inventory = std::vector<double>(economy->get_numGoods());
@@ -62,8 +71,8 @@ void Agent::post_offer(std::shared_ptr<Offer> offer) {
 }
 
 void Agent::respond_to_offer(std::shared_ptr<Offer> offer) {
-    offer->add_response(Response(shared_from_this(), time));
-    myResponses.push_back(offer);
+    std::shared_ptr<Response> response = offer->add_response(shared_from_this());
+    myResponses.push_back(response);
 }
 
 void Agent::check_my_offers() {
@@ -74,11 +83,12 @@ void Agent::check_my_offers() {
     }
 }
 
-bool Agent::accept_offer_response(std::shared_ptr<Offer> offer, const Response& response) {
+bool Agent::accept_offer_response(std::shared_ptr<Response> response) {
+    std::shared_ptr<Offer> offer = std::static_pointer_cast<Offer>(response->get_offer());
     // first check that offer is owned by this agent
     assert(offer->get_offerer() == shared_from_this());
     // make sure it's still available and response is at least 1 period old before proceeding
-    if (!(offer->is_available() && response.time > offer->get_time_created())) {
+    if (!(offer->is_available() && response->get_time() > offer->get_time_created())) {
         return false;
     }
     // make sure this agent actually has enough goods
@@ -91,7 +101,7 @@ bool Agent::accept_offer_response(std::shared_ptr<Offer> offer, const Response& 
         }
     }
     // send to responder for finalization
-    if (response.responder->finalize_offer(offer)) {
+    if (response->get_responder()->finalize_offer(response)) {
         // complete transaction
         money += offer->get_price();
         for (auto i : offer->get_good_ids()) {
@@ -107,11 +117,11 @@ bool Agent::accept_offer_response(std::shared_ptr<Offer> offer, const Response& 
     }
 }
 
-bool Agent::finalize_offer(std::shared_ptr<Offer> offer) {
+bool Agent::finalize_offer(std::shared_ptr<Response> response) {
     // check that the agent actually responded to this offer
     bool responded = false;
-    for (auto resp : myResponses) {
-        if (resp == offer) {
+    for (auto myResponse : myResponses) {
+        if (myResponse == response) {
             responded = true;
             break;
         }
@@ -119,6 +129,7 @@ bool Agent::finalize_offer(std::shared_ptr<Offer> offer) {
     if (!responded) {
         return false;
     }
+    std::shared_ptr<Offer> offer = std::static_pointer_cast<Offer>(response->get_offer());
     // check that the agent has enough money
     if (money >= offer->get_price()) {
         // complete transaction
@@ -140,9 +151,31 @@ void Agent::create_firm() {
 }
 
 void Agent::flush_myOffers() {
-    flush_offers<Offer>(myOffers);
+    // figure out which myOffers are no longer available
+    std::vector<unsigned int> idxs;
+    for (unsigned int i = 0; i < myOffers.size(); i++) {
+        if (!myOffers[i]->is_available()) {
+            idxs.push_back(i);
+        }
+    }
+    // remove those myOffers
+    for (auto i : idxs) {
+        myOffers[i] = myOffers.back();
+        myOffers.pop_back();
+    }
 }
 
 void Agent::flush_myResponses() {
-    flush_offers<Offer>(myResponses);
+    // figure out which myResponses are no longer available
+    std::vector<unsigned int> idxs;
+    for (unsigned int i = 0; i < myResponses.size(); i++) {
+        if (!myResponses[i]->is_available()) {
+            idxs.push_back(i);
+        }
+    }
+    // remove those myResponses
+    for (auto i : idxs) {
+        myResponses[i] = myResponses.back();
+        myResponses.pop_back();
+    }
 }

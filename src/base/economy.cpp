@@ -2,19 +2,21 @@
 
 Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {}
 
-void Economy::add_person() {
-    std::make_shared<Person>(this);
+std::shared_ptr<Person> Economy::add_person() {
+    return Person::create(this);
 }
 
 void Economy::add_person(std::shared_ptr<Person> person) {
+    assert(person->get_economy() == this);
     persons.push_back(person);
 }
 
-void Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
-    std::make_shared<Firm>(this, firstOwner);
+std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
+    return Firm::create(this, firstOwner);
 }
 
 void Economy::add_firm(std::shared_ptr<Firm> firm) {
+    assert(firm->get_economy() == this);
     firms.push_back(firm);
 }
 
@@ -33,11 +35,33 @@ void Economy::add_offer(std::shared_ptr<Offer> offer) { market.push_back(offer);
 void Economy::add_jobOffer(std::shared_ptr<JobOffer> jobOffer) { laborMarket.push_back(jobOffer); }
 
 void Economy::flush_market() {
-    flush_offers<Offer>(market);
+    // figure out which offers are no longer available
+    std::vector<unsigned int> idxs;
+    for (unsigned int i = 0; i < market.size(); i++) {
+        if (!market[i]->is_available()) {
+            idxs.push_back(i);
+        }
+    }
+    // remove those offers
+    for (auto i : idxs) {
+        market[i] = market.back();
+        market.pop_back();
+    }
 }
 
 void Economy::flush_labor_market() {
-    flush_offers<JobOffer>(laborMarket);
+    // figure out which offers are no longer available
+    std::vector<unsigned int> idxs;
+    for (unsigned int i = 0; i < laborMarket.size(); i++) {
+        if (!laborMarket[i]->is_available()) {
+            idxs.push_back(i);
+        }
+    }
+    // remove those laborMarket
+    for (auto i : idxs) {
+        laborMarket[i] = laborMarket.back();
+        laborMarket.pop_back();
+    }
 }
 
 bool Economy::time_step() {

@@ -2,21 +2,30 @@
 #include <memory>
 #include "base.h"
 
+std::shared_ptr<Firm> Firm::create(Economy* economy, std::shared_ptr<Agent> owner) {
+    std::shared_ptr<Firm> firm = std::shared_ptr<Firm>(new Firm(economy, owner));
+    economy->add_firm(firm);
+    return firm;
+}
+
+std::shared_ptr<Firm> Firm::create(
+    Economy* economy,
+    std::vector<std::shared_ptr<Agent>> owners,
+    std::vector<double> inventory,
+    double money
+) {
+    std::shared_ptr<Firm> firm = std::shared_ptr<Firm>(new Firm(economy, owners, inventory, money));
+    economy->add_firm(firm);
+    return firm;
+}
+
 Firm::Firm(Economy* economy, std::shared_ptr<Agent> owner)
     : Agent(economy) {
         owners.push_back(owner);
-        economy->add_firm(get_shared_firm());
     }
 
 Firm::Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, std::vector<double> inventory, double money)
-    : Agent(economy, inventory, money), owners(owners) {
-        economy->add_firm(get_shared_firm());
-    }
-
-
-std::shared_ptr<Firm> Firm::get_shared_firm() {
-    return std::static_pointer_cast<Firm>(shared_from_this());
-}
+    : Agent(economy, inventory, money), owners(owners) {}
 
 
 bool Firm::time_step() {
@@ -46,5 +55,16 @@ void Firm::check_my_jobOffers() {
 }
 
 void Firm::flush_myJobOffers() {
-    flush_offers<JobOffer>(myJobOffers);
+    // figure out which myJobOffers are no longer available
+    std::vector<unsigned int> idxs;
+    for (unsigned int i = 0; i < myJobOffers.size(); i++) {
+        if (!myJobOffers[i]->is_available()) {
+            idxs.push_back(i);
+        }
+    }
+    // remove those myJobOffers
+    for (auto i : idxs) {
+        myJobOffers[i] = myJobOffers.back();
+        myJobOffers.pop_back();
+    }
 }
