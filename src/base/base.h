@@ -175,8 +175,6 @@ public:
     // won't do anything if the responder doesn't have the offer response in myResponses
     bool finalize_offer(std::shared_ptr<Response> response);
 
-    friend
-
 protected:
     Agent(Economy* economy);
     Agent(Economy* economy, std::vector<double> inventory, double money);
@@ -216,11 +214,6 @@ protected:
     // clear unavailable offers or responses
     void flush_myOffers();
     void flush_myResponses();
-
-    template <typename Derived>
-    std::shared_ptr<Derived> shared_from_base() {
-        return std::static_pointer_cast<Derived>(shared_from_this());
-    }
 };
 
 

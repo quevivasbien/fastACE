@@ -3,7 +3,7 @@
 Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {}
 
 std::shared_ptr<Person> Economy::add_person() {
-    return Person::create(this);
+    return create<Person>(this);
 }
 
 void Economy::add_agent(std::shared_ptr<Person> person) {
@@ -12,7 +12,7 @@ void Economy::add_agent(std::shared_ptr<Person> person) {
 }
 
 std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
-    return Firm::create(this, firstOwner);
+    return create<Firm>(this, firstOwner);
 }
 
 void Economy::add_agent(std::shared_ptr<Firm> firm) {

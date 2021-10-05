@@ -1,14 +1,5 @@
 #include "base.h"
 
-std::shared_ptr<Agent> Agent::create(Economy* economy) {
-    return std::shared_ptr<Agent>(new Agent(economy));
-}
-
-std::shared_ptr<Agent> Agent::create(
-    Economy* economy, std::vector<double> inventory, double money
-) {
-    return std::shared_ptr<Agent>(new Agent(economy, inventory, money));
-}
 
 Agent::Agent(Economy* economy) : economy(economy), money(0), time(economy->get_time()) {
     inventory = std::vector<double>(economy->get_numGoods());
