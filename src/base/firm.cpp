@@ -2,23 +2,6 @@
 #include <memory>
 #include "base.h"
 
-std::shared_ptr<Firm> Firm::create(Economy* economy, std::shared_ptr<Agent> owner) {
-    std::shared_ptr<Firm> firm = std::shared_ptr<Firm>(new Firm(economy, owner));
-    economy->add_firm(firm);
-    return firm;
-}
-
-std::shared_ptr<Firm> Firm::create(
-    Economy* economy,
-    std::vector<std::shared_ptr<Agent>> owners,
-    std::vector<double> inventory,
-    double money
-) {
-    std::shared_ptr<Firm> firm = std::shared_ptr<Firm>(new Firm(economy, owners, inventory, money));
-    economy->add_firm(firm);
-    return firm;
-}
-
 Firm::Firm(Economy* economy, std::shared_ptr<Agent> owner)
     : Agent(economy) {
         owners.push_back(owner);

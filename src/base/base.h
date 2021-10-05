@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <utility>
 #include <assert.h>
 #include <Eigen/Dense>
 
@@ -12,6 +13,16 @@ class BaseOffer;
 class Agent;
 class Person;
 class Firm;
+
+
+// a helper function template for instantiating Agent objects
+// should be included as a friend function in any class that inherits from Agent
+template <typename T, typename ... Args>
+std::shared_ptr<T> create(Args&& ... args) {
+	std::shared_ptr<T> agent = std::shared_ptr<T>(new T(std::forward<Args>(args) ...));
+    agent->economy->add_agent(agent);
+    return agent;
+}
 
 
 class Response {
@@ -112,9 +123,9 @@ public:
     unsigned int get_time() const { return time; };
 
     virtual std::shared_ptr<Person> add_person();
-    virtual void add_person(std::shared_ptr<Person> person);
+    virtual void add_agent(std::shared_ptr<Person> person);
     virtual std::shared_ptr<Firm> add_firm(std::shared_ptr<Agent> firstOwner);
-    virtual void add_firm(std::shared_ptr<Firm> firm);
+    virtual void add_agent(std::shared_ptr<Firm> firm);
 
     const std::string* get_name_for_good_id(unsigned int id) const;
 
@@ -152,9 +163,7 @@ class Agent : public std::enable_shared_from_this<Agent> {
 public:
     // Note: Agents can create shared pointers to themselves, but
     // this means that you _must_ create an Agent as a shared pointer
-    // to force this behavior, constructor is private, and Agent::create should be called instead
-    static std::shared_ptr<Agent> create(Economy* economy);
-    static std::shared_ptr<Agent> create(Economy* economy, std::vector<double> inventory, double money);
+    // you should use the `create` template function to instantiate any class that inherits from Agent
     virtual ~Agent() {}
 
     // make a time step. returns true if completed successfully, else false
@@ -210,19 +219,14 @@ protected:
     // clear unavailable offers or responses
     void flush_myOffers();
     void flush_myResponses();
-
-    template <typename Derived>
-    std::shared_ptr<Derived> shared_from_base() {
-        return std::static_pointer_cast<Derived>(shared_from_this());
-    }
 };
 
 
 class Person : public Agent {
     // Persons are Agents which can also consume their goods and offer labor to Firms
 public:
-    static std::shared_ptr<Person> create(Economy* economy);
-    static std::shared_ptr<Person> create(Economy* economy, std::vector<double> inventory, double money);
+    template <typename T, typename ... Args>
+	friend std::shared_ptr<T> create(Args&& ... args);
 
     std::shared_ptr<Person> get_shared_person();
 
@@ -253,13 +257,9 @@ class Firm : public Agent {
     // Firms can hire laborers (Persons), produce new goods, and pay dividends on profits
     // Firms are owned by other Agents (other firms or persons)
 public:
-    static std::shared_ptr<Firm> create(Economy* economy, std::shared_ptr<Agent> owner);
-    static std::shared_ptr<Firm> create(
-        Economy* economy,
-        std::vector<std::shared_ptr<Agent>> owners,
-        Eigen::ArrayXd inventory,
-        double money
-    );
+    template <typename T, typename ... Args>
+	friend std::shared_ptr<T> create(Args&& ... args);
+
     virtual void search_for_laborers() {};  // currently does nothing
     virtual void produce() {};  // currently does nothing
     virtual void pay_dividends() {};  // currently does nothing
