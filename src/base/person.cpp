@@ -5,7 +5,7 @@
 Person::Person(Economy* economy) : Agent(economy) {}
 
 Person::Person(
-    Economy* economy, std::vector<double> inventory, double money
+    Economy* economy, Eigen::ArrayXd inventory, double money
 ) : Agent(economy, inventory, money) {}
 
 
@@ -16,34 +16,27 @@ bool Person::time_step() {
     else {
         search_for_job();
         consume_goods();
-        flush_myJobResponses();
         return true;
     }
 }
 
 void Person::search_for_job() {
-    const std::vector<std::shared_ptr<JobOffer>> jobOffers = economy->get_laborMarket();
-    for (auto jobOffer : jobOffers) {
+    for (auto jobOffer : economy->get_laborMarket()) {
         look_at_jobOffer(jobOffer);
     }
 }
 
-void Person::respond_to_jobOffer(std::shared_ptr<JobOffer> jobOffer) {
-    std::shared_ptr<Response> response = jobOffer->add_response(shared_from_this());
-    myJobResponses.push_back(response);
-}
-
-void Person::flush_myJobResponses() {
-    // figure out which myJobResponses are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < myJobResponses.size(); i++) {
-        if (!myJobResponses[i]->is_available()) {
-            idxs.push_back(i);
+bool Person::respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
+    // check that the person actually has enough labor remaining, then send to offerer
+    if (labor + jobOffer->labor <= 1) {
+        bool accepted = std::static_pointer_cast<Firm>(jobOffer->offerer)->review_jobOffer_response(
+            std::static_pointer_cast<Person>(shared_from_this()), jobOffer
+        );
+        if (accepted) {
+            labor += jobOffer->labor;
+            money += jobOffer->wage;
+            return true;
         }
     }
-    // remove those myJobResponses
-    for (auto i : idxs) {
-        myJobResponses[i] = myJobResponses.back();
-        myJobResponses.pop_back();
-    }
+    return false;
 }

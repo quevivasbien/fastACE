@@ -25,56 +25,26 @@ std::shared_ptr<T> create(Args&& ... args) {
 }
 
 
-class Response {
-public:
-    Response(
-        std::shared_ptr<BaseOffer> offer,
-        std::shared_ptr<Agent> responder,
-        unsigned int time
-    );
-
-    virtual ~Response() {}
-
-    const std::shared_ptr<BaseOffer> get_offer() const;
-    const std::shared_ptr<Agent> get_responder() const;
-    unsigned int get_time() const;
-    virtual bool is_available() const;
-
-private:
-    std::shared_ptr<BaseOffer> offer;
-    std::shared_ptr<Agent> responder;
-    unsigned int time;
-};
-
-
-class BaseOffer : public std::enable_shared_from_this<BaseOffer> {
-    // Base class from which Offer and JobOffer inherit
-    // TODO: figure out how to keep agents from messing with other people's stuff
-public:
+struct BaseOffer {
+    // Base struct from which Offer and JobOffer inherit
     BaseOffer(
         std::shared_ptr<Agent> offerer,
         unsigned int amount_available
     );
-
     virtual ~BaseOffer() {}
 
     unsigned int amount_left;
-    const std::shared_ptr<Agent> get_offerer() const;
-    const std::vector<std::shared_ptr<Response>>& get_responses() const;
-    std::shared_ptr<Response> add_response(std::shared_ptr<Agent> responder);
-    // unavailable offers will be swept up by the parent economy
-    virtual bool is_available();
-    unsigned int get_time_created() const;
-protected:
     unsigned int time_created;
     // the agent who posted the offer
     std::shared_ptr<Agent> offerer;
-    // the agents who have responded to the offer, indicating they want it
-    std::vector<std::shared_ptr<Response>> responses;
+
+    // unavailable offers will be swept up by the parent economy
+    // in most cases just returns whether amount_left > 0
+    virtual bool is_available() const;
 };
 
 
-class Offer : public BaseOffer {
+struct Offer : BaseOffer {
 public:
     Offer(
         std::shared_ptr<Agent> offerer,
@@ -83,17 +53,14 @@ public:
         Eigen::ArrayXd quantities,
         double price
     );
-    const Eigen::ArrayXd& get_quantities() const;
-    const std::vector<unsigned int>& get_good_ids() const;
-    virtual double get_price() const;
-protected:
+
     std::vector<unsigned int> good_ids;
     Eigen::ArrayXd quantities;
     double price;
 };
 
 
-class JobOffer : public BaseOffer {
+struct JobOffer : BaseOffer {
 public:
     JobOffer(
         std::shared_ptr<Firm> offerer,
@@ -101,9 +68,7 @@ public:
         double labor,
         double wage
     );
-    double get_labor();
-    virtual double get_wage() const;
-protected:
+
     double labor;
     double wage;
 };
@@ -133,11 +98,11 @@ public:
     const std::vector<std::shared_ptr<Firm>>& get_firms() const;
     const std::vector<std::string>& get_goods() const;
     unsigned int get_numGoods() const;
-    const std::vector<std::shared_ptr<Offer>>& get_market() const;
-    const std::vector<std::shared_ptr<JobOffer>>& get_laborMarket() const;
+    const std::vector<std::shared_ptr<const Offer>>& get_market() const;
+    const std::vector<std::shared_ptr<const JobOffer>>& get_laborMarket() const;
 
-    void add_offer(std::shared_ptr<Offer> offer);
-    void add_jobOffer(std::shared_ptr<JobOffer> jobOffer);
+    void add_offer(std::shared_ptr<const Offer> offer);
+    void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
 
 protected:
     std::vector<std::shared_ptr<Person>> persons;
@@ -146,8 +111,8 @@ protected:
     /// normally these goods will be referred to by their indices in the goods list
     std::vector<std::string> goods;
     unsigned int numGoods;  // equal to goods.size()
-    std::vector<std::shared_ptr<Offer>> market;
-    std::vector<std::shared_ptr<JobOffer>> laborMarket;
+    std::vector<std::shared_ptr<const Offer>> market;
+    std::vector<std::shared_ptr<const JobOffer>> laborMarket;
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
 
@@ -173,9 +138,13 @@ public:
     Economy* get_economy() const;
     double get_money() const;
     const Eigen::ArrayXd& get_inventory() const;
-    // called via accept_offer_response, by the responder, finalizes a transaction if possible
-    // won't do anything if the responder doesn't have the offer response in myResponses
-    bool finalize_offer(std::shared_ptr<Response> response);
+
+    // Looks at current response to an offer from myOffers and decides whether to accept or reject
+    // won't do anything if the responder doesn't have the offer in myOffers
+    // returns true if offer is accepted & successful
+    // *should call accept_offer_response to determine if it is successful
+    // default implementation accepts all valid responses
+    virtual bool review_offer_response(std::shared_ptr<Agent> responder, std::shared_ptr<const Offer> offer);
 
     // print a summary of this agent's current status
     virtual void print_summary();
@@ -188,37 +157,39 @@ protected:
     Eigen::ArrayXd inventory;
     // the offers this agent has listed on the market
     std::vector<std::shared_ptr<Offer>> myOffers;
-    // the responses this agent has made to other agents' offers
-    std::vector<std::shared_ptr<Response>> myResponses;
     double money;
     unsigned int time;
+
+
+    // the amount of labor this agent is currently using
+    // for agents, cannot exceed 1.0
+    // for firms, it's the amount of labor hired from Persons
+    // typically reset to zero at the beginning of every period
+    double labor = 0.0;
 
     void add_to_inventory(unsigned int good_id, double quantity);
     void add_money(double amount);
     // loops through offers on market and decides whether to respond to each of them
     virtual void buy_goods();
-    // lists offers for goods and checks responses to myOffers
+    // lists offers for goods and checks current offers to decide whether to keep them on the market
     virtual void sell_goods();
     // looks at an an offer on the market and decides whether the agent wants it
     // (calls respond_to_offer(offer) if the agent wants it)
-    virtual void look_at_offer(std::shared_ptr<Offer> offer) {};  // currently does nothing
-    virtual void respond_to_offer(std::shared_ptr<Offer> offer);
+    virtual void look_at_offer(std::shared_ptr<const Offer> offer) {}  // currently does nothing
+    virtual bool respond_to_offer(std::shared_ptr<const Offer> offer);
     // decide whether to post new offers,
     // if yes, should call post_offer (possibly more than once)
-    virtual void post_new_offers() {};  // currently does nothing
+    virtual void post_new_offers() {}  // currently does nothing
     // add offer to economy->market
     void post_offer(std::shared_ptr<Offer> offer);
-    // Checks responses to all offers currently in myOffers
-    void check_my_offers();
-    // Looks at current responses to an offer from myOffers and decides whether to accept or reject
-    virtual void review_offer_responses(std::shared_ptr<Offer> offer) {};  // currently does nothing
-    // called by the offerer, finalizes a transaction if possible
-    bool accept_offer_response(std::shared_ptr<Response> response);
+    // Checks current offers to decide whether to keep them on the market
+    virtual void check_my_offers() {}  // currently does nothing
+    // called by the offerer during review_offer_response, finalizes a transaction
+    void accept_offer_response(std::shared_ptr<Offer> offer);
     // creates a new firm with this agent as the first owner
     virtual void create_firm();
     // clear unavailable offers or responses
     void flush_myOffers();
-    void flush_myResponses();
 };
 
 
@@ -228,27 +199,17 @@ public:
     template <typename T, typename ... Args>
 	friend std::shared_ptr<T> create(Args&& ... args);
 
-    std::shared_ptr<Person> get_shared_person();
-
     bool time_step() override;
 
 protected:
     Person(Economy* economy);
     Person(Economy* economy, Eigen::ArrayXd inventory, double money);
 
-    // the amount of labor this agent is currently using
-    // typically cannot exceed 1.0
-    double labor = 0.0;
-    // the responses this person has made to firms' job offers
-    std::vector<std::shared_ptr<Response>> myJobResponses;
-
     virtual void search_for_job();
     virtual void consume_goods() {};  // currently does nothing
     // looks at a job offer and decides whether to respond (apply)
-    virtual void look_at_jobOffer(std::shared_ptr<JobOffer> jobOffer) {};  // currently does nothing
-    virtual void respond_to_jobOffer(std::shared_ptr<JobOffer> jobOffer);
-    // clear unavailable job responses
-    void flush_myJobResponses();
+    virtual void look_at_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {};  // currently does nothing
+    virtual bool respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
 
 };
 
@@ -264,7 +225,11 @@ public:
     virtual void produce() {};  // currently does nothing
     virtual void pay_dividends() {};  // currently does nothing
 
-    std::shared_ptr<Firm> get_shared_firm();
+    // analagous to Agent::review_offer_response
+    virtual bool review_jobOffer_response(
+        std::shared_ptr<Person> responder,
+        std::shared_ptr<const JobOffer> jobOffer
+    );
 
     bool time_step() override;
 
@@ -273,11 +238,12 @@ protected:
     Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money);
 
     std::vector<std::shared_ptr<Agent>> owners;
-    double money;
     // the job offers this firm has listed on the job market
     std::vector<std::shared_ptr<JobOffer>> myJobOffers;
-    void check_my_jobOffers();
-    virtual bool review_jobOffer_responses(std::shared_ptr<JobOffer> jobOffer) {return false;};  // currently does nothing
+
+    // analogous to Agent::check_my_offers
+    void check_my_jobOffers() {}  // currently does nothing
+    void accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer);
     void post_jobOffer(std::shared_ptr<JobOffer> jobOffer);
     // clear unavailable job offers
     void flush_myJobOffers();

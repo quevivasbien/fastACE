@@ -47,6 +47,8 @@ void Linear::set_productivities(const Vec& newProductivities) {
 
 
 
+CobbDouglas::CobbDouglas() : VecToScalar(defaultCDParams.size()), tfp(defaultCDtfp), elasticities(defaultCDParams) {}
+
 CobbDouglas::CobbDouglas(double tfp, const Vec& elasticities) : VecToScalar(elasticities.size()), tfp(tfp), elasticities(elasticities) {}
 
 double CobbDouglas::f(const Vec& quantities) const {

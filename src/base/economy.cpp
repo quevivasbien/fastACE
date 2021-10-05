@@ -28,11 +28,11 @@ const std::vector<std::shared_ptr<Person>>& Economy::get_persons() const { retur
 const std::vector<std::shared_ptr<Firm>>& Economy::get_firms() const { return firms; }
 const std::vector<std::string>& Economy::get_goods() const { return goods; }
 unsigned int Economy::get_numGoods() const { return numGoods; }
-const std::vector<std::shared_ptr<Offer>>& Economy::get_market() const { return market; }
-const std::vector<std::shared_ptr<JobOffer>>& Economy::get_laborMarket() const { return laborMarket; }
+const std::vector<std::shared_ptr<const Offer>>& Economy::get_market() const { return market; }
+const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_laborMarket() const { return laborMarket; }
 
-void Economy::add_offer(std::shared_ptr<Offer> offer) { market.push_back(offer); }
-void Economy::add_jobOffer(std::shared_ptr<JobOffer> jobOffer) { laborMarket.push_back(jobOffer); }
+void Economy::add_offer(std::shared_ptr<const Offer> offer) { market.push_back(offer); }
+void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) { laborMarket.push_back(jobOffer); }
 
 void Economy::flush_market() {
     // figure out which offers are no longer available
@@ -76,6 +76,7 @@ bool Economy::time_step() {
             return false;
         }
     }
+    // TODO: randomize order of movement
     // now actually step
     for (auto person : persons) {
         person->time_step();

@@ -24,17 +24,43 @@ bool Firm::time_step() {
 }
 
 void Firm::post_jobOffer(std::shared_ptr<JobOffer> jobOffer) {
-    assert(jobOffer->get_offerer() == shared_from_this());
+    assert(jobOffer->offerer == shared_from_this());
     economy->add_jobOffer(jobOffer);
     myJobOffers.push_back(jobOffer);
 }
 
-void Firm::check_my_jobOffers() {
-    for (auto jobOffer : myJobOffers) {
-        if (jobOffer->is_available()) {
-            review_jobOffer_responses(jobOffer);
+
+bool Firm::review_jobOffer_response(
+    std::shared_ptr<Person> responder,
+    std::shared_ptr<const JobOffer> jobOffer
+) {
+    // check that the offer is in myOffers
+    std::shared_ptr<JobOffer> myCopy;
+    for (auto myOffer : myJobOffers) {
+        if (myOffer == jobOffer) {
+            myCopy = myOffer;
+            break;
         }
     }
+    if (myCopy == nullptr) {
+        return false;
+    }
+    // need to use myCopy from here since it's not const
+    // make sure this firm can actually afford to pay the wage
+    if (money < myCopy->wage) {
+        // mark for removal
+        myCopy->amount_left = 0;
+        return false;
+    }
+    // all good, let's go!
+    accept_jobOffer_response(myCopy);
+    return true;
+}
+
+void Firm::accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer) {
+    money -= jobOffer->wage;
+    labor += jobOffer->labor;
+    jobOffer->amount_left--;
 }
 
 void Firm::flush_myJobOffers() {

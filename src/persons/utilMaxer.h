@@ -8,13 +8,9 @@
 
 class UtilMaxer : public Person {
 public:
-    static std::shared_ptr<UtilMaxer> create(Economy* economy);
-    static std::shared_ptr<UtilMaxer> create(
-        Economy* economy,
-        Eigen::ArrayXd inventory,
-        double money,
-        std::shared_ptr<VecToScalar> utilFunc
-    );
+    template <typename T, typename ... Args>
+	friend std::shared_ptr<T> create(Args&& ... args);
+
     double u(const Eigen::ArrayXd& quantities);  // alias for utilFunc.f
 protected:
     UtilMaxer(Economy* economy);

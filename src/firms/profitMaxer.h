@@ -8,13 +8,8 @@
 
 class ProfitMaxer : public Firm {
 public:
-    static std::shared_ptr<ProfitMaxer> create(Economy* economy, std::shared_ptr<Agent> owner);
-    static std::shared_ptr<ProfitMaxer> create(
-        Economy* economy,
-        Eigen::ArrayXd inventory,
-        double money,
-        std::shared_ptr<VecToScalar> prodFunc
-    );
+    template <typename T, typename ... Args>
+	friend std::shared_ptr<T> create(Args&& ... args);
 
     double f(const Eigen::ArrayXd& quantities);
 protected:
