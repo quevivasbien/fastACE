@@ -38,6 +38,7 @@ bool Agent::time_step() {
 unsigned int Agent::get_time() const { return time; };
 Economy* Agent::get_economy() const { return economy; }
 double Agent::get_money() const { return money; }
+const Eigen::ArrayXd& Agent::get_inventory() const { return inventory; }
 
 
 void Agent::buy_goods() {
@@ -92,9 +93,9 @@ bool Agent::accept_offer_response(std::shared_ptr<Response> response) {
         return false;
     }
     // make sure this agent actually has enough goods
-    const std::vector<double> quantities = offer->get_quantities();
+    const Eigen::ArrayXd quantities = offer->get_quantities();
     for (auto i : offer->get_good_ids()) {
-        if (inventory[i] < quantities[i]) {
+        if (inventory(i) < quantities(i)) {
             // mark for removal and return false
             offer->amount_left = 0;
             return false;
@@ -105,7 +106,7 @@ bool Agent::accept_offer_response(std::shared_ptr<Response> response) {
         // complete transaction
         money += offer->get_price();
         for (auto i : offer->get_good_ids()) {
-            inventory[i] -= offer->get_quantities()[i];
+            inventory(i) -= offer->get_quantities()(i);
         }
         // change listing to -= 1 amount available
         offer->amount_left -= 1;
@@ -134,9 +135,9 @@ bool Agent::finalize_offer(std::shared_ptr<Response> response) {
     if (money >= offer->get_price()) {
         // complete transaction
         money -= offer->get_price();
-        std::vector<double> quantities = offer->get_quantities();
+        Eigen::ArrayXd quantities = offer->get_quantities();
         for (auto i : offer->get_good_ids()) {
-            inventory[i] += offer->get_quantities()[i];
+            inventory(i) += offer->get_quantities()(i);
         }
         // signal transaction successful
         return true;
@@ -178,4 +179,18 @@ void Agent::flush_myResponses() {
         myResponses[i] = myResponses.back();
         myResponses.pop_back();
     }
+}
+
+void Agent::print_summary() {
+    std::cout << "----------" << std::endl
+        << "Memory ID: " << this << std::endl
+        << "----------" << std::endl;
+    std::cout << "Economy: " << economy << std::endl;
+    std::cout << "Time: " << time << std::endl << std::endl;
+    std::cout << "Inventory:" << std::endl;
+    for (unsigned int i = 0; i < economy->get_numGoods(); i++) {
+        const std::string* good_name = economy->get_name_for_good_id(i);
+        std::cout << *good_name << ": " << inventory(i) << std::endl;
+    }
+    std::cout << std::endl << "Money: " << money << std::endl << std::endl;
 }

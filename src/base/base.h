@@ -6,6 +6,7 @@
 #include <string>
 #include <memory>
 #include <assert.h>
+#include <Eigen/Dense>
 
 class BaseOffer;
 class Agent;
@@ -68,15 +69,15 @@ public:
         std::shared_ptr<Agent> offerer,
         unsigned int amount_available,
         std::vector<unsigned int> good_ids,
-        std::vector<double> quantities,
+        Eigen::ArrayXd quantities,
         double price
     );
-    const std::vector<double>& get_quantities() const;
+    const Eigen::ArrayXd& get_quantities() const;
     const std::vector<unsigned int>& get_good_ids() const;
     virtual double get_price() const;
 protected:
     std::vector<unsigned int> good_ids;
-    std::vector<double> quantities;
+    Eigen::ArrayXd quantities;
     double price;
 };
 
@@ -162,16 +163,20 @@ public:
     unsigned int get_time() const;
     Economy* get_economy() const;
     double get_money() const;
+    const Eigen::ArrayXd& get_inventory() const;
     // called via accept_offer_response, by the responder, finalizes a transaction if possible
     // won't do anything if the responder doesn't have the offer response in myResponses
     bool finalize_offer(std::shared_ptr<Response> response);
 
+    // print a summary of this agent's current status
+    virtual void print_summary();
+
 protected:
     Agent(Economy* economy);
-    Agent(Economy* economy, std::vector<double> inventory, double money);
+    Agent(Economy* economy, Eigen::ArrayXd inventory, double money);
 
     Economy* economy;  // the economy this Agent is a part of
-    std::vector<double> inventory;
+    Eigen::ArrayXd inventory;
     // the offers this agent has listed on the market
     std::vector<std::shared_ptr<Offer>> myOffers;
     // the responses this agent has made to other agents' offers
@@ -225,7 +230,7 @@ public:
 
 protected:
     Person(Economy* economy);
-    Person(Economy* economy, std::vector<double> inventory, double money);
+    Person(Economy* economy, Eigen::ArrayXd inventory, double money);
 
     // the amount of labor this agent is currently using
     // typically cannot exceed 1.0
@@ -252,7 +257,7 @@ public:
     static std::shared_ptr<Firm> create(
         Economy* economy,
         std::vector<std::shared_ptr<Agent>> owners,
-        std::vector<double> inventory,
+        Eigen::ArrayXd inventory,
         double money
     );
     virtual void search_for_laborers() {};  // currently does nothing
@@ -265,7 +270,7 @@ public:
 
 protected:
     Firm(Economy* economy, std::shared_ptr<Agent> owner);
-    Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, std::vector<double> inventory, double money);
+    Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money);
 
     std::vector<std::shared_ptr<Agent>> owners;
     double money;
