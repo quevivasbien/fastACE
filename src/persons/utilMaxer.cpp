@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <random>
+#include <limits>
 #include "utilMaxer.h"
 
 auto rd = std::random_device();
@@ -21,7 +22,7 @@ double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
     return utilFunc->f(quantities);
 }
 
-const std::vector<std::shared_ptr<const Offer>> filterAvailable(
+std::vector<std::shared_ptr<const Offer>> filterAvailable(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     bool shuffle = true
 ) {
@@ -38,46 +39,130 @@ const std::vector<std::shared_ptr<const Offer>> filterAvailable(
     return availOffers;
 }
 
-double find_cheapest(const std::vector<std::shared_ptr<const Offer>>& offers, unsigned int numOffers) {
-    double cheapest_price = availOffers[0]->price;
-    for (unsigned int i = 1; i < numOffers; i++) {
-        if (availOffers[i]->price < cheapest_price) {
-            cheapest_price = availOffers[i]->price;
+int UtilMaxer::find_best_offer(
+    const std::vector<std::shared_ptr<const Offer>>& offers,
+    unsigned int numOffers,
+    double budgetLeft,
+    std::vector<unsigned int> numTaken,
+    const Eigen::ArrayXd& quantities
+) {
+    double base_u = u(quantities);
+    double best_util_per_cost = 0.0;
+    int bestIdx = -1;
+    for (int i = 0; i < numOffers; i++) {
+        if ((offers[i]->amount_left > numTaken[i]) && (offers[i]->price <= budgetLeft)) {
+            double du_per_cost = (
+                (u(quantities + offers[i]->quantities) - base_u) / offers[i]->price;
+            )
+            if (du_per_cost > best_util_per_cost) {
+                best_util_per_cost = du_per_cost;
+                bestIdx = i;
+            }
         }
     }
-    return cheapest_price;
+    return bestIdx;
 }
 
-void UtilMaxer::choose_goods(
+void UtilMaxer::fill_basket(
+    const std::vector<std::shared_ptr<const Offer>>& availOffers,
+    unsigned int numOffers,
+    double& budgetLeft,
+    std::vector<unsigned int>& numTaken,
+    Eigen::ArrayXd& quantities
+) {
+    int bestIdx = 0;
+    while (bestIdx != -1) {
+        // repeats until nothing is affordable or gives positive util diff
+        bestIdx = find_best_offer(
+            availOffers, numOffers, budgetLeft, numTaken, quantities
+        );
+        quantities += availOffers[bestIdx]->quantities;
+        budgetLeft -= availOffers[bestIdx]->price;
+        numTaken[bestIdx]++;
+    }
+}
+
+int UtilMaxer::find_worst_offer(
+    const std::vector<std::shared_ptr<const Offer>>& offers,
+    unsigned int numOffers,
+    std::vector<unsigned int> numTaken,
+    const Eigen::ArrayXd& quantities
+) {
+    double base_u = u(quantities);
+    double worst_util_per_cost = std::numeric_limits<double>::infinity();
+    int worstIdx = 0;
+    for (int i = 0; i < numOffers; i++) {
+        if (numTaken[i] > 0) {
+            double du_per_cost = (
+                (base_u - u(quantities - offers[i]->quantities)) / offers[i]->price;
+            )
+            if (du_per_cost < worst_util_per_cost) {
+                worst_util_per_cost = du_per_cost;
+                worstIdx = i;
+            }
+        }
+    }
+    return worstIdx;
+}
+
+void UtilMaxer::empty_basket(
+    const std::vector<std::shared_ptr<const Offer>>& availOffers,
+    unsigned int numOffers,
+    double& budgetLeft,
+    std::vector<unsigned int>& numTaken,
+    Eigen::ArrayXd& quantities,
+    int heat
+) {
+    for (unsigned int i = 0; i < heat; i++) {
+        int worstIdx = find_worst_offer(
+            availOffers, numOffers, numTaken, quantities
+        );
+        quantities -= availOffers[worstIdx]->quantities;
+        budgetLeft += availOffers[worstIdx]->price;
+        numTaken[bestIdx]--;
+    }
+}
+
+std::vector<Order> UtilMaxer::choose_goods(
     double budget,
-    const std::vector<std::shared_ptr<const Offer>>& offers
+    const std::vector<std::shared_ptr<const Offer>>& offers,
+    int heat = 5,
+    bool shuffle = true
 ) {
     // set to optimize over is not continuous, so we can't use standard approach
     // thus this is a nasty version of a knapsack problem
     // can't use linear programming either, since util is not linear
-    // the algorithm used here gets only an approximate solution
+    // the algorithm used here gets only an approximate solution in most cases
 
-    const std::vector<std::shared_ptr<const Offer>> availOffers = filterAvailable(offers);
+    const std::vector<std::shared_ptr<const Offer>> availOffers = filterAvailable(offers, shuffle);
     unsigned int numOffers = availOffers.size();
     std::vector<unsigned int> numTaken(numOffers);  // number of each offer taken
 
-    double budget_left = budget;
+    double budgetLeft = budget;
     Eigen::ArrayXd quantities = Eigen::ArrayXd::Zero(economy->get_numGoods());
-
-    // // find cheapest offer
-    // double cheapest_price = find_cheapest(availOffers, numOffers);
-    //
-    // // first step is to randomly pick offers until budget is exhausted
-    // unsigned int i = 0;
-    // while (budget_left >= cheapest_price) {
-    //     if ((availOffers[i]->price <= budget_left) && (availOffers[i]->amount_left > numTaken[i])) {
-    //         numTaken[i]++;
-    //         budget_left -= availOffers[i]->price;
-    //         if ((availOffers[i]->amount_left = 0) && (availOffers[i]->price == cheapest_price)) {
-    //
-    //         }
-    //         quantities += availOffers[i]->quantities;
-    //     }
-    //     i = (i + 1) % numOffers;
-    // }
+    
+    fill_basket(
+        availOffers, numOffers, budgetLeft, numTaken, quantities
+    );
+    int offersInBasket = numTaken.sum();
+    heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
+    while (heat > 0) {
+        empty_basket(
+            availOffers, numOffers, budgetLeft, numTaken, quantities, heat
+        );
+        fill_basket(
+            availOffers, numOffers, budgetLeft, numTaken, quantities
+        );
+        offersInBasket = numTaken.sum();
+        heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
+    }
+    
+    std::vector<Order> orders;
+    for (unsigned int i = 0; i < numOffers; i++) {
+        if (numTaken[i] > 0) {
+            orders.push_back(Order(availOffers[i], numTaken[i]);
+        }
+    }
+    return orders;
 }
+
