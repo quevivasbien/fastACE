@@ -3,8 +3,7 @@
 #include <limits>
 #include "utilMaxer.h"
 
-auto rd = std::random_device();
-auto rng = std::default_random_engine(rd());
+auto rng = std::default_random_engine {};
 
 
 UtilMaxer::UtilMaxer(
@@ -24,7 +23,7 @@ double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
 
 std::vector<std::shared_ptr<const Offer>> filterAvailable(
     const std::vector<std::shared_ptr<const Offer>>& offers,
-    bool shuffle = true
+    bool shuffle
 ) {
     std::vector<std::shared_ptr<const Offer>> availOffers;
     availOffers.reserve(offers.size());
@@ -43,17 +42,17 @@ int UtilMaxer::find_best_offer(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     unsigned int numOffers,
     double budgetLeft,
-    std::vector<unsigned int> numTaken,
+    const Eigen::ArrayXi& numTaken,
     const Eigen::ArrayXd& quantities
 ) {
     double base_u = u(quantities);
     double best_util_per_cost = 0.0;
     int bestIdx = -1;
     for (int i = 0; i < numOffers; i++) {
-        if ((offers[i]->amount_left > numTaken[i]) && (offers[i]->price <= budgetLeft)) {
+        if ((offers[i]->amount_left > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
             double du_per_cost = (
-                (u(quantities + offers[i]->quantities) - base_u) / offers[i]->price;
-            )
+                (u(quantities + offers[i]->quantities) - base_u) / offers[i]->price
+            );
             if (du_per_cost > best_util_per_cost) {
                 best_util_per_cost = du_per_cost;
                 bestIdx = i;
@@ -67,7 +66,7 @@ void UtilMaxer::fill_basket(
     const std::vector<std::shared_ptr<const Offer>>& availOffers,
     unsigned int numOffers,
     double& budgetLeft,
-    std::vector<unsigned int>& numTaken,
+    Eigen::ArrayXi& numTaken,
     Eigen::ArrayXd& quantities
 ) {
     int bestIdx = 0;
@@ -78,24 +77,24 @@ void UtilMaxer::fill_basket(
         );
         quantities += availOffers[bestIdx]->quantities;
         budgetLeft -= availOffers[bestIdx]->price;
-        numTaken[bestIdx]++;
+        numTaken(bestIdx)++;
     }
 }
 
 int UtilMaxer::find_worst_offer(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     unsigned int numOffers,
-    std::vector<unsigned int> numTaken,
+    const Eigen::ArrayXi& numTaken,
     const Eigen::ArrayXd& quantities
 ) {
     double base_u = u(quantities);
     double worst_util_per_cost = std::numeric_limits<double>::infinity();
     int worstIdx = 0;
     for (int i = 0; i < numOffers; i++) {
-        if (numTaken[i] > 0) {
+        if (numTaken(i) > 0) {
             double du_per_cost = (
-                (base_u - u(quantities - offers[i]->quantities)) / offers[i]->price;
-            )
+                (base_u - u(quantities - offers[i]->quantities)) / offers[i]->price
+            );
             if (du_per_cost < worst_util_per_cost) {
                 worst_util_per_cost = du_per_cost;
                 worstIdx = i;
@@ -109,7 +108,7 @@ void UtilMaxer::empty_basket(
     const std::vector<std::shared_ptr<const Offer>>& availOffers,
     unsigned int numOffers,
     double& budgetLeft,
-    std::vector<unsigned int>& numTaken,
+    Eigen::ArrayXi& numTaken,
     Eigen::ArrayXd& quantities,
     int heat
 ) {
@@ -119,15 +118,22 @@ void UtilMaxer::empty_basket(
         );
         quantities -= availOffers[worstIdx]->quantities;
         budgetLeft += availOffers[worstIdx]->price;
-        numTaken[bestIdx]--;
+        numTaken(worstIdx)--;
     }
 }
 
 std::vector<Order> UtilMaxer::choose_goods(
     double budget,
+    const std::vector<std::shared_ptr<const Offer>>& offers
+) {
+    return choose_goods(budget, offers, 5, true);
+}
+
+std::vector<Order> UtilMaxer::choose_goods(
+    double budget,
     const std::vector<std::shared_ptr<const Offer>>& offers,
-    int heat = 5,
-    bool shuffle = true
+    int heat,
+    bool shuffle
 ) {
     // set to optimize over is not continuous, so we can't use standard approach
     // thus this is a nasty version of a knapsack problem
@@ -136,11 +142,11 @@ std::vector<Order> UtilMaxer::choose_goods(
 
     const std::vector<std::shared_ptr<const Offer>> availOffers = filterAvailable(offers, shuffle);
     unsigned int numOffers = availOffers.size();
-    std::vector<unsigned int> numTaken(numOffers);  // number of each offer taken
+    Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 
     double budgetLeft = budget;
     Eigen::ArrayXd quantities = Eigen::ArrayXd::Zero(economy->get_numGoods());
-    
+
     fill_basket(
         availOffers, numOffers, budgetLeft, numTaken, quantities
     );
@@ -156,13 +162,12 @@ std::vector<Order> UtilMaxer::choose_goods(
         offersInBasket = numTaken.sum();
         heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
     }
-    
+
     std::vector<Order> orders;
     for (unsigned int i = 0; i < numOffers; i++) {
-        if (numTaken[i] > 0) {
-            orders.push_back(Order(availOffers[i], numTaken[i]);
+        if (numTaken(i) > 0) {
+            orders.push_back(Order(availOffers[i], numTaken(i)));
         }
     }
     return orders;
 }
-

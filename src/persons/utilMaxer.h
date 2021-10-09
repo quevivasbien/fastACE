@@ -11,14 +11,14 @@ struct Order {
         std::shared_ptr<const Offer> offer,
         unsigned int amount
     ) : offer(offer), amount(amount) {}
-    std::shared_ptr<const Offer> offer,
-    unsigned int amount
+    std::shared_ptr<const Offer> offer;
+    unsigned int amount;
 };
 
 
 std::vector<std::shared_ptr<const Offer>> filterAvailable(
     const std::vector<std::shared_ptr<const Offer>>& offers,
-    bool shuffle = true
+    bool shuffle
 );
 
 
@@ -38,45 +38,49 @@ protected:
     );
 
     std::shared_ptr<VecToScalar> utilFunc;
-    
+
     // helper functions for choose_goods:
     int find_best_offer(
         const std::vector<std::shared_ptr<const Offer>>& offers,
         unsigned int numOffers,
         double budgetLeft,
-        std::vector<unsigned int> numTaken,
+        const Eigen::ArrayXi& numTaken,
         const Eigen::ArrayXd& quantities
     );
     void fill_basket(
         const std::vector<std::shared_ptr<const Offer>>& availOffers,
         unsigned int numOffers,
         double& budgetLeft,
-        std::vector<unsigned int>& numTaken,
+        Eigen::ArrayXi& numTaken,
         Eigen::ArrayXd& quantities
     );
     int find_worst_offer(
         const std::vector<std::shared_ptr<const Offer>>& offers,
         unsigned int numOffers,
-        std::vector<unsigned int> numTaken,
+        const Eigen::ArrayXi& numTaken,
         const Eigen::ArrayXd& quantities
     );
     void empty_basket(
         const std::vector<std::shared_ptr<const Offer>>& availOffers,
         unsigned int numOffers,
         double& budgetLeft,
-        std::vector<unsigned int>& numTaken,
+        Eigen::ArrayXi& numTaken,
         Eigen::ArrayXd& quantities,
         int heat
     );
-    
+
     // called by buy_goods()
     // looks at current goods on market and chooses bundle that maximizes utility
     // subject to restriction that total price is within budget
-    virtual void choose_goods(
+    std::vector<Order> choose_goods(
         double budget,
-        const std::vector<std::shared_ptr<const Offer&> offers,
-        int heat = 5,
-        bool shuffle = true
+        const std::vector<std::shared_ptr<const Offer>>& offers
+    );
+    virtual std::vector<Order> choose_goods(
+        double budget,
+        const std::vector<std::shared_ptr<const Offer>>& offers,
+        int heat,
+        bool shuffle
     );
 };
 
