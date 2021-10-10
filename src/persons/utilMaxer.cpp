@@ -8,7 +8,7 @@ auto rng = std::default_random_engine {};
 
 UtilMaxer::UtilMaxer(
     Economy* economy
-) : Person(economy), utilFunc(std::make_shared<CobbDouglas>()) {}
+) : Person(economy), utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods())) {}
 
 UtilMaxer::UtilMaxer(
     Economy* economy,
@@ -22,7 +22,7 @@ double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
 }
 
 void UtilMaxer::buy_goods() {
-    std::vector<Order> orders = choose_goods(money, economy->get_market());
+    std::vector<Order<Offer>> orders = choose_goods(money, economy->get_market());
     for (auto order : orders) {
         for (unsigned int i; i < order.amount; i++) {
             respond_to_offer(order.offer);
@@ -31,11 +31,12 @@ void UtilMaxer::buy_goods() {
     }
 }
 
-std::vector<std::shared_ptr<const Offer>> filter_available(
-    const std::vector<std::shared_ptr<const Offer>>& offers,
+template <typename T>
+std::vector<std::shared_ptr<const T>> filter_available(
+    const std::vector<std::shared_ptr<const T>>& offers,
     bool shuffle
 ) {
-    std::vector<std::shared_ptr<const Offer>> availOffers;
+    std::vector<std::shared_ptr<const T>> availOffers;
     availOffers.reserve(offers.size());
     for (auto offer : offers) {
         if (offer->is_available()) {
@@ -132,14 +133,14 @@ void UtilMaxer::empty_basket(
     }
 }
 
-std::vector<Order> UtilMaxer::choose_goods(
+std::vector<Order<Offer>> UtilMaxer::choose_goods(
     double budget,
     const std::vector<std::shared_ptr<const Offer>>& offers
 ) {
     return choose_goods(budget, offers, 5, true);
 }
 
-std::vector<Order> UtilMaxer::choose_goods(
+std::vector<Order<Offer>> UtilMaxer::choose_goods(
     double budget,
     const std::vector<std::shared_ptr<const Offer>>& offers,
     int heat,
@@ -150,7 +151,7 @@ std::vector<Order> UtilMaxer::choose_goods(
     // can't use linear programming either, since util is not linear
     // the algorithm used here gets only an approximate solution in most cases
 
-    const std::vector<std::shared_ptr<const Offer>> availOffers = filter_available(offers, shuffle);
+    const std::vector<std::shared_ptr<const Offer>> availOffers = filter_available<Offer>(offers, shuffle);
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 
@@ -173,10 +174,143 @@ std::vector<Order> UtilMaxer::choose_goods(
         heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
     }
 
-    std::vector<Order> orders;
+    std::vector<Order<Offer>> orders;
     for (unsigned int i = 0; i < numOffers; i++) {
         if (numTaken(i) > 0) {
-            orders.push_back(Order(availOffers[i], numTaken(i)));
+            orders.push_back(Order<Offer>(availOffers[i], numTaken(i)));
+        }
+    }
+    return orders;
+}
+
+void UtilMaxer::consume_goods() {
+    // just consumes all goods
+    inventory = Eigen::ArrayXd::Zero(inventory.size());
+}
+
+
+void UtilMaxer::search_for_jobs() {
+    std::vector<Order<JobOffer>> orders = choose_jobs(labor, economy->get_jobMarket());
+    for (auto order : orders) {
+        for (unsigned int i; i < order.amount; i++) {
+            respond_to_jobOffer(order.offer);
+            // TODO: Handle cases where response is rejected
+        }
+    }
+}
+
+int UtilMaxer::find_best_jobOffer(
+    const std::vector<std::shared_ptr<const JobOffer>>& offers,
+    unsigned int numOffers,
+    double laborLeft,
+    const Eigen::ArrayXi& numTaken
+) {
+    double best_wage_per_labor = 0.0;
+    int bestIdx = -1;
+    for (int i = 0; i < numOffers; i++) {
+        if ((offers[i]->amountLeft > numTaken(i)) && (offers[i]->labor <= laborLeft)) {
+            double wage_per_labor = offers[i]->wage / offers[i]->labor;
+            if (wage_per_labor > best_wage_per_labor) {
+                best_wage_per_labor = wage_per_labor;
+                bestIdx = i;
+            }
+        }
+    }
+    return bestIdx;
+}
+
+void UtilMaxer::fill_labor_basket(
+    const std::vector<std::shared_ptr<const JobOffer>>& availOffers,
+    unsigned int numOffers,
+    double& laborLeft,
+    Eigen::ArrayXi& numTaken
+) {
+    int bestIdx = 0;
+    while (bestIdx != -1) {
+        // repeats until nothing is affordable or gives positive util diff
+        bestIdx = find_best_jobOffer(
+            availOffers, numOffers, laborLeft, numTaken
+        );
+        laborLeft -= availOffers[bestIdx]->labor;
+        numTaken(bestIdx)++;
+    }
+}
+
+int UtilMaxer::find_worst_jobOffer(
+    const std::vector<std::shared_ptr<const JobOffer>>& offers,
+    unsigned int numOffers,
+    const Eigen::ArrayXi& numTaken
+) {
+    double worst_wage_per_labor = std::numeric_limits<double>::infinity();
+    int worstIdx = 0;
+    for (int i = 0; i < numOffers; i++) {
+        if (numTaken(i) > 0) {
+            double wage_per_labor = offers[i]->wage / offers[i]->labor;
+            if (wage_per_labor < worst_wage_per_labor) {
+                worst_wage_per_labor = wage_per_labor;
+                worstIdx = i;
+            }
+        }
+    }
+    return worstIdx;
+}
+
+void UtilMaxer::empty_labor_basket(
+    const std::vector<std::shared_ptr<const JobOffer>>& availOffers,
+    unsigned int numOffers,
+    double& laborLeft,
+    Eigen::ArrayXi& numTaken,
+    int heat
+) {
+    for (unsigned int i = 0; i < heat; i++) {
+        int worstIdx = find_worst_jobOffer(
+            availOffers, numOffers, numTaken
+        );
+        laborLeft += availOffers[worstIdx]->labor;
+        numTaken(worstIdx)--;
+    }
+}
+
+std::vector<Order<JobOffer>> UtilMaxer::choose_jobs(
+    double laborBudget,
+    const std::vector<std::shared_ptr<const JobOffer>>& jobOffers
+) {
+    return choose_jobs(laborBudget, jobOffers, 5, true);
+}
+
+
+std::vector<Order<JobOffer>> UtilMaxer::choose_jobs(
+    double laborBudget,
+    const std::vector<std::shared_ptr<const JobOffer>>& jobOffers,
+    int heat,
+    bool shuffle
+) {
+    const std::vector<std::shared_ptr<const JobOffer>> availOffers = filter_available<JobOffer>(jobOffers, shuffle);
+    unsigned int numOffers = availOffers.size();
+    Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
+
+    double laborLeft = laborBudget;
+
+    fill_labor_basket(
+        availOffers, numOffers, laborLeft, numTaken
+    );
+    int offersInBasket = numTaken.sum();
+    heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
+    while (heat > 0) {
+        empty_labor_basket(
+            availOffers, numOffers, laborLeft, numTaken, heat
+        );
+        fill_labor_basket(
+            availOffers, numOffers, laborLeft, numTaken
+        );
+        offersInBasket = numTaken.sum();
+        heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
+    }
+
+    std::vector<Order<JobOffer>> orders;
+    for (unsigned int i = 0; i < numOffers; i++) {
+        if (numTaken(i) > 0) {
+            orders.push_back(Order<JobOffer>(availOffers[i], numTaken(i)));
         }
     }
     return orders;

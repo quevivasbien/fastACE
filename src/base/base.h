@@ -72,6 +72,17 @@ public:
     double wage;
 };
 
+
+template <typename T>
+struct Order {
+    Order(
+        std::shared_ptr<const T> offer,
+        unsigned int amount
+    ) : offer(offer), amount(amount) {}
+    std::shared_ptr<const T> offer;
+    unsigned int amount;
+};
+
 // TODO: consider implementing contracts for goods and especially labor
 // esp if search costs are implemented
 
@@ -98,7 +109,7 @@ public:
     const std::vector<std::string>& get_goods() const;
     unsigned int get_numGoods() const;
     const std::vector<std::shared_ptr<const Offer>>& get_market() const;
-    const std::vector<std::shared_ptr<const JobOffer>>& get_laborMarket() const;
+    const std::vector<std::shared_ptr<const JobOffer>>& get_jobMarket() const;
 
     void add_offer(std::shared_ptr<const Offer> offer);
     void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
@@ -170,12 +181,12 @@ protected:
     void add_money(double amount);
     // loops through offers on market and decides whether to respond to each of them
     virtual void buy_goods() {}  // by default does nothing
-    // lists offers for goods and checks current offers to decide whether to keep them on the market
+    // lists offers for goods
     virtual void sell_goods() {} // by default does nothing
     // looks at an an offer on the market and decides whether the agent wants it
     // (calls respond_to_offer(offer) if the agent wants it)
     virtual bool respond_to_offer(std::shared_ptr<const Offer> offer);
-    // add offer to economy->market
+    // add offer to economy->market and myOffers
     void post_offer(std::shared_ptr<Offer> offer);
     // Checks current offers to decide whether to keep them on the market
     virtual void check_my_offers();
@@ -200,10 +211,8 @@ protected:
     Person(Economy* economy);
     Person(Economy* economy, Eigen::ArrayXd inventory, double money);
 
-    virtual void search_for_job();
-    virtual void consume_goods() {};  // currently does nothing
-    // looks at a job offer and decides whether to respond (apply)
-    virtual void look_at_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {};  // currently does nothing
+    virtual void search_for_jobs() {}  // currently does nothing
+    virtual void consume_goods() {}  // currently does nothing
     virtual bool respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
 
 };

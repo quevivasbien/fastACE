@@ -29,7 +29,7 @@ const std::vector<std::shared_ptr<Firm>>& Economy::get_firms() const { return fi
 const std::vector<std::string>& Economy::get_goods() const { return goods; }
 unsigned int Economy::get_numGoods() const { return numGoods; }
 const std::vector<std::shared_ptr<const Offer>>& Economy::get_market() const { return market; }
-const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_laborMarket() const { return laborMarket; }
+const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_jobMarket() const { return laborMarket; }
 
 void Economy::add_offer(std::shared_ptr<const Offer> offer) { market.push_back(offer); }
 void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) { laborMarket.push_back(jobOffer); }

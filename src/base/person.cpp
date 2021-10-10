@@ -14,17 +14,12 @@ bool Person::time_step() {
         return false;
     }
     else {
-        search_for_job();
+        search_for_jobs();
         consume_goods();
         return true;
     }
 }
 
-void Person::search_for_job() {
-    for (auto jobOffer : economy->get_laborMarket()) {
-        look_at_jobOffer(jobOffer);
-    }
-}
 
 bool Person::respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
     // check that the person actually has enough labor remaining, then send to offerer

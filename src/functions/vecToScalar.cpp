@@ -45,9 +45,9 @@ void Linear::set_productivities(const Vec& newProductivities) {
 }
 
 
-
-
-CobbDouglas::CobbDouglas() : VecToScalar(defaultCDParams.size()), tfp(defaultCDtfp), elasticities(defaultCDParams) {}
+CobbDouglas::CobbDouglas(
+    unsigned int numInputs
+) : VecToScalar(numInputs), tfp(1.0), elasticities(Eigen::ArrayXd::Constant(numInputs, 1.0 / numInputs)) {}
 
 CobbDouglas::CobbDouglas(double tfp, const Vec& elasticities) : VecToScalar(elasticities.size()), tfp(tfp), elasticities(elasticities) {}
 
@@ -67,8 +67,6 @@ void CobbDouglas::set_elasticities(const Vec& newElasticities) {
     check_no_length_change(newElasticities);
     elasticities = newElasticities;
 }
-
-
 
 
 CobbDouglasCRS::CobbDouglasCRS(double tfp, const Vec& elasticities) : CobbDouglas(tfp, elasticities) {

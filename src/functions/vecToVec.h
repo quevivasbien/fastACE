@@ -22,16 +22,24 @@ protected:
 };
 
 
-class VecToVecFromVecToScalar : public VecToVec {
+class VToVFromVToS : public VecToVec {
     // encloses a VecToScalar object but maintains functionality as a vec to vec
-    // (numOutputs will always be 1)
+    // only returns a positive value in one of its output indices
 public:
-    VecToVecFromVecToScalar(std::shared_ptr<VecToScalar> vecToScalar);
+    VToVFromVToS(
+        std::shared_ptr<VecToScalar> vecToScalar,
+        unsigned int numOutputs,
+        unsigned int outputIndex
+    );
+    VToVFromVToS(
+        std::shared_ptr<VecToScalar> vecToScalar
+        // implicitly assumes numOutputs = 1 and outputIndex = 0
+    );
     Vec f(const Vec& quantities) const override;
     double df(const Vec& quantities, unsigned int i, unsigned int j) const override;
-    double df(const Vec& quantities, unsigned int j) const;
 protected:
     std::shared_ptr<VecToScalar> vecToScalar;
+    unsigned int outputIndex;
 };
 
 #endif

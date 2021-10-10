@@ -2,7 +2,7 @@
 #define PROFITMAXER_H
 
 #include "base.h"
-#include "vecToScalar.h"
+#include "vecToVec.h"
 #include "solve.h"
 
 
@@ -13,10 +13,21 @@ public:
 
     double f(const Eigen::ArrayXd& quantities);
 protected:
-    ProfitMaxer(Economy* economy, std::shared_ptr<Agent> owner);
-    ProfitMaxer(Economy* economy, Eigen::ArrayXd inventory, double money, std::shared_ptr<VecToScalar> prodFunc);
+    ProfitMaxer(Economy* economy, std::shared_ptr<Agent> owner, unsigned int outputIndex);
+    ProfitMaxer(
+        Economy* economy,
+        std::shared_ptr<Agent> owner,
+        std::shared_ptr<VecToVec> prodFunc
+    );
+    ProfitMaxer(
+        Economy* economy,
+        std::vector<std::shared_ptr<Agent>> owners,
+        Eigen::ArrayXd inventory,
+        double money,
+        std::shared_ptr<VecToVec> prodFunc
+    );
 
-    std::shared_ptr<VecToScalar> prodFunc;
+    std::shared_ptr<VecToVec> prodFunc;
 };
 
 #endif

@@ -40,13 +40,9 @@ protected:
 };
 
 
-const double defaultCDtfp = 1.0;
-const Eigen::Array<double, 2, 1> defaultCDParams = {0.5, 0.5};
-
-
 class CobbDouglas : public VecToScalar {
 public:
-    CobbDouglas();
+    CobbDouglas(unsigned int numInputs);
     CobbDouglas(double tfp, const Vec& elasticities);
     virtual double f(const Vec& quantities) const;
     virtual double df(const Vec& quantities, unsigned int idx) const;
