@@ -21,7 +21,17 @@ double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
     return utilFunc->f(quantities);
 }
 
-std::vector<std::shared_ptr<const Offer>> filterAvailable(
+void UtilMaxer::buy_goods() {
+    std::vector<Order> orders = choose_goods(money, economy->get_market());
+    for (auto order : orders) {
+        for (unsigned int i; i < order.amount; i++) {
+            respond_to_offer(order.offer);
+            // TODO: Handle cases where response is rejected
+        }
+    }
+}
+
+std::vector<std::shared_ptr<const Offer>> filter_available(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     bool shuffle
 ) {
@@ -49,7 +59,7 @@ int UtilMaxer::find_best_offer(
     double best_util_per_cost = 0.0;
     int bestIdx = -1;
     for (int i = 0; i < numOffers; i++) {
-        if ((offers[i]->amount_left > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
+        if ((offers[i]->amountLeft > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
             double du_per_cost = (
                 (u(quantities + offers[i]->quantities) - base_u) / offers[i]->price
             );
@@ -140,7 +150,7 @@ std::vector<Order> UtilMaxer::choose_goods(
     // can't use linear programming either, since util is not linear
     // the algorithm used here gets only an approximate solution in most cases
 
-    const std::vector<std::shared_ptr<const Offer>> availOffers = filterAvailable(offers, shuffle);
+    const std::vector<std::shared_ptr<const Offer>> availOffers = filter_available(offers, shuffle);
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 

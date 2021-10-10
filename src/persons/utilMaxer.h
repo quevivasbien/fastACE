@@ -16,7 +16,7 @@ struct Order {
 };
 
 
-std::vector<std::shared_ptr<const Offer>> filterAvailable(
+std::vector<std::shared_ptr<const Offer>> filter_available(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     bool shuffle
 );
@@ -39,7 +39,10 @@ protected:
 
     std::shared_ptr<VecToScalar> utilFunc;
 
-    // helper functions for choose_goods:
+    // calls choose_goods(), then requests those goods
+    virtual void buy_goods() override;
+
+    // helper functions for choose_goods():
     int find_best_offer(
         const std::vector<std::shared_ptr<const Offer>>& offers,
         unsigned int numOffers,
@@ -79,7 +82,9 @@ protected:
     virtual std::vector<Order> choose_goods(
         double budget,
         const std::vector<std::shared_ptr<const Offer>>& offers,
+        // analogy to simulated annealing, more heat means more iterations for optimization
         int heat,
+        // whether to shuffle offers before going over them, default is true
         bool shuffle
     );
 };

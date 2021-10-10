@@ -49,7 +49,7 @@ bool Firm::review_jobOffer_response(
     // make sure this firm can actually afford to pay the wage
     if (money < myCopy->wage) {
         // mark for removal
-        myCopy->amount_left = 0;
+        myCopy->amountLeft = 0;
         return false;
     }
     // all good, let's go!
@@ -60,7 +60,7 @@ bool Firm::review_jobOffer_response(
 void Firm::accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer) {
     money -= jobOffer->wage;
     labor += jobOffer->labor;
-    jobOffer->amount_left--;
+    jobOffer->amountLeft--;
 }
 
 void Firm::flush_myJobOffers() {

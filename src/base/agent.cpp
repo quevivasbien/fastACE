@@ -2,7 +2,7 @@
 
 
 Agent::Agent(Economy* economy) : economy(economy), money(0), time(economy->get_time()) {
-    inventory = Eigen::ArrayXd(economy->get_numGoods());
+    inventory = Eigen::ArrayXd::Zero(economy->get_numGoods());
 }
 
 Agent::Agent(
@@ -18,6 +18,7 @@ bool Agent::time_step() {
         labor = 0.0;
         buy_goods();
         sell_goods();
+        check_my_offers();
         flush_myOffers();
         return true;  // completed successfully
     }
@@ -30,21 +31,6 @@ unsigned int Agent::get_time() const { return time; };
 Economy* Agent::get_economy() const { return economy; }
 double Agent::get_money() const { return money; }
 const Eigen::ArrayXd& Agent::get_inventory() const { return inventory; }
-
-
-void Agent::buy_goods() {
-    const std::vector<std::shared_ptr<const Offer>> market = economy->get_market();
-    for (auto offer : market) {
-        if (offer->is_available()) {
-            look_at_offer(offer);
-        }
-    }
-}
-
-void Agent::sell_goods() {
-    post_new_offers();
-    check_my_offers();
-}
 
 
 void Agent::add_to_inventory(unsigned int good_id, double quantity) {
@@ -60,6 +46,51 @@ void Agent::post_offer(std::shared_ptr<Offer> offer) {
     assert(offer->offerer == shared_from_this());
     economy->add_offer(offer);
     myOffers.push_back(offer);
+}
+
+bool check_inventory_delta(
+    const Eigen::ArrayXd& inventoryLeft,
+    const Eigen::ArrayXd& delta
+) {
+    bool ok = true;
+    for (unsigned int i = 0; i < inventoryLeft.size(); i++) {
+        if (delta(i) > inventoryLeft(i)) {
+            ok = false;
+        }
+    }
+    return ok;
+}
+
+void update_offer_amount_left(
+    Eigen::ArrayXd& inventoryLeft,
+    const Eigen::ArrayXd& offerQuants,
+    unsigned int& offerAmtLeft  // will be updated in place
+) {
+    Eigen::ArrayXd delta = offerQuants * offerAmtLeft;
+    unsigned int reduction = 0;
+    bool ok = false;
+    while (!ok) {
+        ok = check_inventory_delta(inventoryLeft, delta);
+        if (!ok) {
+            delta -= offerQuants;
+            offerAmtLeft--;
+        }
+    }
+    inventoryLeft -= delta;
+}
+
+void Agent::check_my_offers() {
+    // default implementation just checks whether this agent can actually still fulfill all posted offers
+    // inventoryLeft keeps track of how much of each good would be left after filling offers
+    Eigen::ArrayXd inventoryLeft = inventory;
+    for (auto offer : myOffers) {
+        // delta is the amount of goods needed to fulfill this offer
+        Eigen::ArrayXd delta = offer->quantities * offer->amountLeft;
+        // changes inventoryLeft and offer->amountLeft in place
+        update_offer_amount_left(
+            inventoryLeft, offer->quantities, offer->amountLeft
+        );
+    }
 }
 
 bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
@@ -97,7 +128,7 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_
     for (auto i : myCopy->good_ids) {
         if (inventory(i) < myCopy->quantities(i)) {
             // mark for removal and return false
-            myCopy->amount_left = 0;
+            myCopy->amountLeft = 0;
             return false;
         }
     }
@@ -112,7 +143,7 @@ void Agent::accept_offer_response(std::shared_ptr<Offer> offer) {
         inventory(i) -= offer->quantities(i);
     }
     // change listing to -= 1 amount available
-    offer->amount_left--;
+    offer->amountLeft--;
 }
 
 

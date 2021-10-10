@@ -33,13 +33,12 @@ struct BaseOffer {
     );
     virtual ~BaseOffer() {}
 
-    unsigned int amount_left;
-    unsigned int time_created;
+    unsigned int amountLeft;
     // the agent who posted the offer
     std::shared_ptr<Agent> offerer;
 
     // unavailable offers will be swept up by the parent economy
-    // in most cases just returns whether amount_left > 0
+    // in most cases just returns whether amountLeft > 0
     virtual bool is_available() const;
 };
 
@@ -170,20 +169,16 @@ protected:
     void add_to_inventory(unsigned int good_id, double quantity);
     void add_money(double amount);
     // loops through offers on market and decides whether to respond to each of them
-    virtual void buy_goods();
+    virtual void buy_goods() {}  // by default does nothing
     // lists offers for goods and checks current offers to decide whether to keep them on the market
-    virtual void sell_goods();
+    virtual void sell_goods() {} // by default does nothing
     // looks at an an offer on the market and decides whether the agent wants it
     // (calls respond_to_offer(offer) if the agent wants it)
-    virtual void look_at_offer(std::shared_ptr<const Offer> offer) {}  // currently does nothing
     virtual bool respond_to_offer(std::shared_ptr<const Offer> offer);
-    // decide whether to post new offers,
-    // if yes, should call post_offer (possibly more than once)
-    virtual void post_new_offers() {}  // currently does nothing
     // add offer to economy->market
     void post_offer(std::shared_ptr<Offer> offer);
     // Checks current offers to decide whether to keep them on the market
-    virtual void check_my_offers() {}  // currently does nothing
+    virtual void check_my_offers();
     // called by the offerer during review_offer_response, finalizes a transaction
     void accept_offer_response(std::shared_ptr<Offer> offer);
     // creates a new firm with this agent as the first owner

@@ -4,10 +4,10 @@
 BaseOffer::BaseOffer(
     std::shared_ptr<Agent> offerer,
     unsigned int amount_available
-) : offerer(offerer), amount_left(amount_available), time_created(offerer->get_time()) {}
+) : offerer(offerer), amountLeft(amount_available) {}
 
 bool BaseOffer::is_available() const {
-    return (amount_left > 0);
+    return (amountLeft > 0);
 }
 
 

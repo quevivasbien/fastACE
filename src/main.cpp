@@ -7,5 +7,6 @@ int main() {
     auto person = economy.add_person();
     economy.add_firm(person);
     economy.time_step();
+    person->print_summary();
     return 0;
 }
