@@ -16,9 +16,12 @@ bool Firm::time_step() {
         return false;
     }
     else {
-        search_for_laborers();
-        produce();
+        check_myJobOffers();
         flush_myJobOffers();
+        search_for_laborers();
+        buy_goods();
+        produce();
+        sell_goods();
         return true;
     }
 }
@@ -57,11 +60,24 @@ bool Firm::review_jobOffer_response(
     return true;
 }
 
+
+void Firm::check_myJobOffers() {
+    double moneyLeft = money;
+    for (auto offer : myJobOffers) {
+        unsigned int amountAble = moneyLeft / offer->wage;
+        if (amountAble > offer->amountLeft) {
+            offer->amountLeft = amountAble;
+        }
+    }
+}
+
+
 void Firm::accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer) {
     money -= jobOffer->wage;
     labor += jobOffer->labor;
     jobOffer->amountLeft--;
 }
+
 
 void Firm::flush_myJobOffers() {
     // figure out which myJobOffers are no longer available

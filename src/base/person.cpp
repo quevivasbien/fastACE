@@ -1,6 +1,4 @@
-#include <vector>
 #include "base.h"
-#include <iostream>
 
 Person::Person(Economy* economy) : Agent(economy) {}
 
@@ -15,6 +13,7 @@ bool Person::time_step() {
     }
     else {
         search_for_jobs();
+        buy_goods();
         consume_goods();
         return true;
     }

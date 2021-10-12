@@ -44,7 +44,6 @@ struct BaseOffer {
 
 
 struct Offer : BaseOffer {
-public:
     Offer(
         std::shared_ptr<Agent> offerer,
         unsigned int amount_available,
@@ -60,7 +59,6 @@ public:
 
 
 struct JobOffer : BaseOffer {
-public:
     JobOffer(
         std::shared_ptr<Firm> offerer,
         unsigned int amount_available,
@@ -183,8 +181,7 @@ protected:
     virtual void buy_goods() {}  // by default does nothing
     // lists offers for goods
     virtual void sell_goods() {} // by default does nothing
-    // looks at an an offer on the market and decides whether the agent wants it
-    // (calls respond_to_offer(offer) if the agent wants it)
+    // indicates that this agent wants an offer
     virtual bool respond_to_offer(std::shared_ptr<const Offer> offer);
     // add offer to economy->market and myOffers
     void post_offer(std::shared_ptr<Offer> offer);
@@ -246,7 +243,7 @@ protected:
     std::vector<std::shared_ptr<JobOffer>> myJobOffers;
 
     // analogous to Agent::check_my_offers
-    void check_my_jobOffers() {}  // currently does nothing
+    virtual void check_myJobOffers();
     void accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer);
     void post_jobOffer(std::shared_ptr<JobOffer> jobOffer);
     // clear unavailable job offers

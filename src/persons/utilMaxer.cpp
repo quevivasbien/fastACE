@@ -80,15 +80,17 @@ void UtilMaxer::fill_basket(
     Eigen::ArrayXi& numTaken,
     Eigen::ArrayXd& quantities
 ) {
-    int bestIdx = 0;
+    int bestIdx = find_best_offer(
+        availOffers, numOffers, budgetLeft, numTaken, quantities
+    );
     while (bestIdx != -1) {
         // repeats until nothing is affordable or gives positive util diff
-        bestIdx = find_best_offer(
-            availOffers, numOffers, budgetLeft, numTaken, quantities
-        );
         quantities += availOffers[bestIdx]->quantities;
         budgetLeft -= availOffers[bestIdx]->price;
         numTaken(bestIdx)++;
+        bestIdx = find_best_offer(
+            availOffers, numOffers, budgetLeft, numTaken, quantities
+        );
     }
 }
 
@@ -225,14 +227,16 @@ void UtilMaxer::fill_labor_basket(
     double& laborLeft,
     Eigen::ArrayXi& numTaken
 ) {
-    int bestIdx = 0;
+    int bestIdx = find_best_jobOffer(
+        availOffers, numOffers, laborLeft, numTaken
+    );
     while (bestIdx != -1) {
         // repeats until nothing is affordable or gives positive util diff
+        laborLeft -= availOffers[bestIdx]->labor;
+        numTaken(bestIdx)++;
         bestIdx = find_best_jobOffer(
             availOffers, numOffers, laborLeft, numTaken
         );
-        laborLeft -= availOffers[bestIdx]->labor;
-        numTaken(bestIdx)++;
     }
 }
 
@@ -285,6 +289,7 @@ std::vector<Order<JobOffer>> UtilMaxer::choose_jobs(
     int heat,
     bool shuffle
 ) {
+    // TODO: heat analogy is not quite right for this problem, so modify implementation
     const std::vector<std::shared_ptr<const JobOffer>> availOffers = filter_available<JobOffer>(jobOffers, shuffle);
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken

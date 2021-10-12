@@ -16,8 +16,6 @@ bool Agent::time_step() {
     if (time != economy->get_time()) {
         time++;
         labor = 0.0;
-        buy_goods();
-        sell_goods();
         check_my_offers();
         flush_myOffers();
         return true;  // completed successfully
@@ -66,6 +64,7 @@ void update_offer_amount_left(
     const Eigen::ArrayXd& offerQuants,
     unsigned int& offerAmtLeft  // will be updated in place
 ) {
+    // delta is the amount of goods needed to fulfill this offer
     Eigen::ArrayXd delta = offerQuants * offerAmtLeft;
     unsigned int reduction = 0;
     bool ok = false;
@@ -84,8 +83,6 @@ void Agent::check_my_offers() {
     // inventoryLeft keeps track of how much of each good would be left after filling offers
     Eigen::ArrayXd inventoryLeft = inventory;
     for (auto offer : myOffers) {
-        // delta is the amount of goods needed to fulfill this offer
-        Eigen::ArrayXd delta = offer->quantities * offer->amountLeft;
         // changes inventoryLeft and offer->amountLeft in place
         update_offer_amount_left(
             inventoryLeft, offer->quantities, offer->amountLeft

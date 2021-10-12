@@ -89,7 +89,6 @@ protected:
         double laborLeft,
         const Eigen::ArrayXi& numTaken
     );
-
     void fill_labor_basket(
         const std::vector<std::shared_ptr<const JobOffer>>& availOffers,
         unsigned int numOffers,

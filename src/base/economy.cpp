@@ -76,6 +76,7 @@ bool Economy::time_step() {
             return false;
         }
     }
+    time++;
     // TODO: randomize order of movement
     // now actually step
     for (auto person : persons) {

@@ -76,9 +76,7 @@ Problem::Problem(std::shared_ptr<VarSet> varSet, std::shared_ptr<ConstrSet> cons
     problem.AddVariableSet(varSet);
     problem.AddConstraintSet(constrSet);
     problem.AddCostSet(objective);
-    std::cout << "[1] To here completed successfully..." << std::endl;
     configure_to_default_solver(solver);
-    std::cout << "[2] To here completed successfully..." << std::endl;
 }
 
 Eigen::ArrayXd Problem::solve() {
