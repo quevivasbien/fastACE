@@ -7,11 +7,17 @@ Person::Person(
 ) : Agent(economy, inventory, money) {}
 
 
+double Person::get_laborSupplied() const {
+    return laborSupplied;
+}
+
+
 bool Person::time_step() {
     if (!Agent::time_step()) {
         return false;
     }
     else {
+        laborSupplied = 0.0;
         search_for_jobs();
         buy_goods();
         consume_goods();

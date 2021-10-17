@@ -173,6 +173,7 @@ protected:
     // for agents, cannot exceed 1.0
     // for firms, it's the amount of labor hired from Persons
     // typically reset to zero at the beginning of every period
+	// TODO: make labor a different variable for firms and persons
     double labor = 0.0;
 
     void add_to_inventory(unsigned int good_id, double quantity);
@@ -202,11 +203,14 @@ public:
     template <typename T, typename ... Args>
 	friend std::shared_ptr<T> create(Args&& ... args);
 
+	double get_laborSupplied() const;
     bool time_step() override;
 
 protected:
     Person(Economy* economy);
     Person(Economy* economy, Eigen::ArrayXd inventory, double money);
+
+	double laborSupplied = 0.0;
 
     virtual void search_for_jobs() {}  // currently does nothing
     virtual void consume_goods() {}  // currently does nothing
@@ -232,6 +236,7 @@ public:
         std::shared_ptr<const JobOffer> jobOffer
     );
 
+	double get_laborHired() const;
     bool time_step() override;
 
 protected:
@@ -241,6 +246,7 @@ protected:
     std::vector<std::shared_ptr<Agent>> owners;
     // the job offers this firm has listed on the job market
     std::vector<std::shared_ptr<JobOffer>> myJobOffers;
+	double laborHired = 0.0;
 
     // analogous to Agent::check_my_offers
     virtual void check_myJobOffers();

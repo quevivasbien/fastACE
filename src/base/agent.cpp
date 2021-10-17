@@ -15,7 +15,6 @@ Agent::Agent(
 bool Agent::time_step() {
     if (time != economy->get_time()) {
         time++;
-        labor = 0.0;
         check_my_offers();
         flush_myOffers();
         return true;  // completed successfully

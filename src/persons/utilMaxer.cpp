@@ -5,32 +5,6 @@
 
 auto rng = std::default_random_engine {};
 
-
-UtilMaxer::UtilMaxer(
-    Economy* economy
-) : Person(economy), utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods())) {}
-
-UtilMaxer::UtilMaxer(
-    Economy* economy,
-    Eigen::ArrayXd inventory,
-    double money,
-    std::shared_ptr<VecToScalar> utilFunc
-) : Person(economy, inventory, money), utilFunc(utilFunc) {}
-
-double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
-    return utilFunc->f(quantities);
-}
-
-void UtilMaxer::buy_goods() {
-    std::vector<Order<Offer>> orders = choose_goods(money, economy->get_market());
-    for (auto order : orders) {
-        for (unsigned int i; i < order.amount; i++) {
-            respond_to_offer(order.offer);
-            // TODO: Handle cases where response is rejected
-        }
-    }
-}
-
 template <typename T>
 std::vector<std::shared_ptr<const T>> filter_available(
     const std::vector<std::shared_ptr<const T>>& offers,
@@ -49,20 +23,112 @@ std::vector<std::shared_ptr<const T>> filter_available(
     return availOffers;
 }
 
-int UtilMaxer::find_best_offer(
+GoodChooser::GoodChooser(UtilMaxer* parent) : parent(parent) {}
+JobChooser::JobChooser(UtilMaxer* parent) : parent(parent) {}
+GoodConsumer::GoodConsumer(UtilMaxer* parent) : parent(parent) {}
+
+
+UtilMaxer::UtilMaxer(
+    Economy* economy
+) : Person(economy),
+    utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods())),
+    goodChooser(std::make_shared<GreedyGoodChooser>(this)),
+    jobChooser(std::make_shared<GreedyJobChooser>(this)),
+    goodConsumer(std::make_shared<GreedyGoodConsumer>(this))
+{}
+
+UtilMaxer::UtilMaxer(
+    Economy* economy,
+    std::shared_ptr<VecToScalar> utilFunc,
+    std::shared_ptr<GoodChooser> goodChooser,
+    std::shared_ptr<JobChooser> jobChooser,
+    std::shared_ptr<GoodConsumer> goodConsumer
+) : Person(economy),
+    utilFunc(utilFunc),
+    goodChooser(goodChooser),
+    jobChooser(jobChooser),
+    goodConsumer(goodConsumer)
+{
+    // these assertions are to make sure that the Choosers don't get assigned to multiple UtilMaxers
+    assert(goodChooser->parent == nullptr);
+    assert(jobChooser->parent == nullptr);
+    assert(goodConsumer->parent == nullptr);
+    goodChooser->parent = this;
+    jobChooser->parent = this;
+    goodConsumer->parent = this;
+}
+
+UtilMaxer::UtilMaxer(
+    Economy* economy,
+    Eigen::ArrayXd inventory,
+    double money,
+    std::shared_ptr<VecToScalar> utilFunc,
+    std::shared_ptr<GoodChooser> goodChooser,
+    std::shared_ptr<JobChooser> jobChooser,
+    std::shared_ptr<GoodConsumer> goodConsumer
+) : Person(economy, inventory, money),
+    utilFunc(utilFunc),
+    goodChooser(goodChooser),
+    jobChooser(jobChooser),
+    goodConsumer(goodConsumer)
+{
+    // these assertions are to make sure that the Choosers don't get assigned to multiple UtilMaxers
+    assert(goodChooser->parent == nullptr);
+    assert(jobChooser->parent == nullptr);
+    assert(goodConsumer->parent == nullptr);
+    goodChooser->parent = this;
+    jobChooser->parent = this;
+    goodConsumer->parent = this;
+}
+
+double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
+    return utilFunc->f(quantities);
+}
+
+void UtilMaxer::buy_goods() {
+    std::vector<Order<Offer>> orders = goodChooser->choose_goods();
+    for (auto order : orders) {
+        for (unsigned int i; i < order.amount; i++) {
+            respond_to_offer(order.offer);
+            // TODO: Handle cases where response is rejected
+        }
+    }
+}
+
+
+void UtilMaxer::search_for_jobs() {
+    std::vector<Order<JobOffer>> orders = jobChooser->choose_jobs();
+    for (auto order : orders) {
+        for (unsigned int i; i < order.amount; i++) {
+            respond_to_jobOffer(order.offer);
+            // TODO: Handle cases where response is rejected
+        }
+    }
+}
+
+
+void UtilMaxer::consume_goods() {
+    // just consumes all goods
+    inventory -= goodConsumer->choose_goods_to_consume();
+}
+
+
+GreedyGoodChooser::GreedyGoodChooser(UtilMaxer* parent) : GoodChooser(parent) {}
+
+int GreedyGoodChooser::find_best_offer(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     unsigned int numOffers,
     double budgetLeft,
     const Eigen::ArrayXi& numTaken,
     const Eigen::ArrayXd& quantities
 ) {
-    double base_u = u(quantities);
+    double base_u = parent->u(quantities);
     double best_util_per_cost = 0.0;
     int bestIdx = -1;
     for (int i = 0; i < numOffers; i++) {
         if ((offers[i]->amountLeft > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
             double du_per_cost = (
-                (u(quantities + offers[i]->quantities) - base_u) / offers[i]->price
+                (parent->u(quantities + offers[i]->quantities) - base_u) / offers[i]->price
             );
             if (du_per_cost > best_util_per_cost) {
                 best_util_per_cost = du_per_cost;
@@ -73,7 +139,7 @@ int UtilMaxer::find_best_offer(
     return bestIdx;
 }
 
-void UtilMaxer::fill_basket(
+void GreedyGoodChooser::fill_basket(
     const std::vector<std::shared_ptr<const Offer>>& availOffers,
     unsigned int numOffers,
     double& budgetLeft,
@@ -94,19 +160,19 @@ void UtilMaxer::fill_basket(
     }
 }
 
-int UtilMaxer::find_worst_offer(
+int GreedyGoodChooser::find_worst_offer(
     const std::vector<std::shared_ptr<const Offer>>& offers,
     unsigned int numOffers,
     const Eigen::ArrayXi& numTaken,
     const Eigen::ArrayXd& quantities
 ) {
-    double base_u = u(quantities);
+    double base_u = parent->u(quantities);
     double worst_util_per_cost = std::numeric_limits<double>::infinity();
     int worstIdx = 0;
     for (int i = 0; i < numOffers; i++) {
         if (numTaken(i) > 0) {
             double du_per_cost = (
-                (base_u - u(quantities - offers[i]->quantities)) / offers[i]->price
+                (base_u - parent->u(quantities - offers[i]->quantities)) / offers[i]->price
             );
             if (du_per_cost < worst_util_per_cost) {
                 worst_util_per_cost = du_per_cost;
@@ -117,7 +183,7 @@ int UtilMaxer::find_worst_offer(
     return worstIdx;
 }
 
-void UtilMaxer::empty_basket(
+void GreedyGoodChooser::empty_basket(
     const std::vector<std::shared_ptr<const Offer>>& availOffers,
     unsigned int numOffers,
     double& budgetLeft,
@@ -135,16 +201,11 @@ void UtilMaxer::empty_basket(
     }
 }
 
-std::vector<Order<Offer>> UtilMaxer::choose_goods(
-    double budget,
-    const std::vector<std::shared_ptr<const Offer>>& offers
-) {
-    return choose_goods(budget, offers, 5, true);
+std::vector<Order<Offer>> GreedyGoodChooser::choose_goods() {
+    return choose_goods(5, true);
 }
 
-std::vector<Order<Offer>> UtilMaxer::choose_goods(
-    double budget,
-    const std::vector<std::shared_ptr<const Offer>>& offers,
+std::vector<Order<Offer>> GreedyGoodChooser::choose_goods(
     int heat,
     bool shuffle
 ) {
@@ -153,12 +214,12 @@ std::vector<Order<Offer>> UtilMaxer::choose_goods(
     // can't use linear programming either, since util is not linear
     // the algorithm used here gets only an approximate solution in most cases
 
-    const std::vector<std::shared_ptr<const Offer>> availOffers = filter_available<Offer>(offers, shuffle);
+    const auto availOffers = filter_available<Offer>(parent->get_economy()->get_market(), shuffle);
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 
-    double budgetLeft = budget;
-    Eigen::ArrayXd quantities = Eigen::ArrayXd::Zero(economy->get_numGoods());
+    double budgetLeft = parent->get_money();
+    Eigen::ArrayXd quantities = Eigen::ArrayXd::Zero(parent->get_economy()->get_numGoods());
 
     fill_basket(
         availOffers, numOffers, budgetLeft, numTaken, quantities
@@ -185,23 +246,10 @@ std::vector<Order<Offer>> UtilMaxer::choose_goods(
     return orders;
 }
 
-void UtilMaxer::consume_goods() {
-    // just consumes all goods
-    inventory = Eigen::ArrayXd::Zero(inventory.size());
-}
 
+GreedyJobChooser::GreedyJobChooser(UtilMaxer* parent) : JobChooser(parent) {}
 
-void UtilMaxer::search_for_jobs() {
-    std::vector<Order<JobOffer>> orders = choose_jobs(labor, economy->get_jobMarket());
-    for (auto order : orders) {
-        for (unsigned int i; i < order.amount; i++) {
-            respond_to_jobOffer(order.offer);
-            // TODO: Handle cases where response is rejected
-        }
-    }
-}
-
-int UtilMaxer::find_best_jobOffer(
+int GreedyJobChooser::find_best_jobOffer(
     const std::vector<std::shared_ptr<const JobOffer>>& offers,
     unsigned int numOffers,
     double laborLeft,
@@ -221,7 +269,7 @@ int UtilMaxer::find_best_jobOffer(
     return bestIdx;
 }
 
-void UtilMaxer::fill_labor_basket(
+void GreedyJobChooser::fill_labor_basket(
     const std::vector<std::shared_ptr<const JobOffer>>& availOffers,
     unsigned int numOffers,
     double& laborLeft,
@@ -240,7 +288,7 @@ void UtilMaxer::fill_labor_basket(
     }
 }
 
-int UtilMaxer::find_worst_jobOffer(
+int GreedyJobChooser::find_worst_jobOffer(
     const std::vector<std::shared_ptr<const JobOffer>>& offers,
     unsigned int numOffers,
     const Eigen::ArrayXi& numTaken
@@ -259,7 +307,7 @@ int UtilMaxer::find_worst_jobOffer(
     return worstIdx;
 }
 
-void UtilMaxer::empty_labor_basket(
+void GreedyJobChooser::empty_labor_basket(
     const std::vector<std::shared_ptr<const JobOffer>>& availOffers,
     unsigned int numOffers,
     double& laborLeft,
@@ -275,26 +323,20 @@ void UtilMaxer::empty_labor_basket(
     }
 }
 
-std::vector<Order<JobOffer>> UtilMaxer::choose_jobs(
-    double laborBudget,
-    const std::vector<std::shared_ptr<const JobOffer>>& jobOffers
-) {
-    return choose_jobs(laborBudget, jobOffers, 5, true);
+std::vector<Order<JobOffer>> GreedyJobChooser::choose_jobs() {
+    return choose_jobs(5, true);
 }
 
-
-std::vector<Order<JobOffer>> UtilMaxer::choose_jobs(
-    double laborBudget,
-    const std::vector<std::shared_ptr<const JobOffer>>& jobOffers,
+std::vector<Order<JobOffer>> GreedyJobChooser::choose_jobs(
     int heat,
     bool shuffle
 ) {
     // TODO: heat analogy is not quite right for this problem, so modify implementation
-    const std::vector<std::shared_ptr<const JobOffer>> availOffers = filter_available<JobOffer>(jobOffers, shuffle);
+    const auto availOffers = filter_available<JobOffer>(parent->get_economy()->get_jobMarket(), shuffle);
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 
-    double laborLeft = laborBudget;
+    double laborLeft = parent->get_laborSupplied();
 
     fill_labor_basket(
         availOffers, numOffers, laborLeft, numTaken
@@ -319,4 +361,11 @@ std::vector<Order<JobOffer>> UtilMaxer::choose_jobs(
         }
     }
     return orders;
+}
+
+
+GreedyGoodConsumer::GreedyGoodConsumer(UtilMaxer* parent) : GoodConsumer(parent) {}
+
+Eigen::ArrayXd GreedyGoodConsumer::choose_goods_to_consume() {
+    return parent->get_inventory();
 }
