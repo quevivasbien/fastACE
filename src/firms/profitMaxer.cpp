@@ -179,7 +179,7 @@ struct GoodChooser {
     Eigen::ArrayXi numTaken;
     double labor;
     Eigen::ArrayXd sellingPrices;
-    unsigned int heat = constants::heat;
+    int heat = constants::heat;
 
 
     int find_best_offer() {
@@ -279,7 +279,7 @@ void BasicFirmDecisionMaker::compare_budgets(
     const std::vector<std::shared_ptr<const Offer>> offers,
     const Eigen::ArrayXd& sellingPrices
 ) {
-    double newLabor = parent->get_laborHired() * newBudget / laborBudget;
+    double newLabor = (parent->get_laborHired() + 0.01) * newBudget / laborBudget;
     double goodsBudget = parent->get_money() * (1 - newBudget) / (1 - laborBudget);
     double newRevenue = parent->get_revenue(
         newLabor,
