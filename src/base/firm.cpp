@@ -22,12 +22,12 @@ bool Firm::time_step() {
     }
     else {
         check_myJobOffers();
-        flush_myJobOffers();
-        search_for_laborers();
+        flush<JobOffer>(myJobOffers);
         buy_goods();
         produce();
         sell_goods();
         laborHired = 0.0;
+        search_for_laborers();
         return true;
     }
 }
@@ -82,20 +82,5 @@ void Firm::accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer) {
     money -= jobOffer->wage;
     labor += jobOffer->labor;
     jobOffer->amountLeft--;
-}
-
-
-void Firm::flush_myJobOffers() {
-    // figure out which myJobOffers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < myJobOffers.size(); i++) {
-        if (!myJobOffers[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those myJobOffers
-    for (auto i : idxs) {
-        myJobOffers[i] = myJobOffers.back();
-        myJobOffers.pop_back();
-    }
+    jobOffer->amountTaken++;
 }

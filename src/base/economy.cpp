@@ -1,6 +1,8 @@
 #include "base.h"
 
-Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {}
+Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {
+    rng = get_rng();
+}
 
 std::shared_ptr<Person> Economy::add_person() {
     return create<Person>(this);
@@ -30,39 +32,11 @@ const std::vector<std::string>& Economy::get_goods() const { return goods; }
 unsigned int Economy::get_numGoods() const { return numGoods; }
 const std::vector<std::shared_ptr<const Offer>>& Economy::get_market() const { return market; }
 const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_jobMarket() const { return laborMarket; }
+std::default_random_engine Economy::get_rng() const { return rng; }
 
 void Economy::add_offer(std::shared_ptr<const Offer> offer) { market.push_back(offer); }
 void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) { laborMarket.push_back(jobOffer); }
 
-void Economy::flush_market() {
-    // figure out which offers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < market.size(); i++) {
-        if (!market[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those offers
-    for (auto i : idxs) {
-        market[i] = market.back();
-        market.pop_back();
-    }
-}
-
-void Economy::flush_labor_market() {
-    // figure out which offers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < laborMarket.size(); i++) {
-        if (!laborMarket[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those laborMarket
-    for (auto i : idxs) {
-        laborMarket[i] = laborMarket.back();
-        laborMarket.pop_back();
-    }
-}
 
 bool Economy::time_step() {
     // check that all agents have caught up before stepping
@@ -85,7 +59,7 @@ bool Economy::time_step() {
     for (auto firm : firms) {
         firm->time_step();
     }
-    flush_market();
-    flush_labor_market();
+    flush<const Offer>(market);
+    flush<const JobOffer>(laborMarket);
     return true;
 }

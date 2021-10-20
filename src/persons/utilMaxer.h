@@ -6,13 +6,6 @@
 // #include "solve.h"
 
 
-template <typename T>
-std::vector<std::shared_ptr<const T>> filter_available(
-    const std::vector<std::shared_ptr<const T>>& offers,
-    bool shuffle
-);
-
-
 class UtilMaxer;
 
 struct GoodChooser {

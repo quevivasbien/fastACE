@@ -14,10 +14,9 @@ bool BaseOffer::is_available() const {
 Offer::Offer(
     std::shared_ptr<Agent> offerer,
     unsigned int amount_available,
-    std::vector<unsigned int> good_ids,
     Eigen::ArrayXd quantities,
     double price
-) : BaseOffer(offerer, amount_available), good_ids(good_ids), quantities(quantities), price(price) {}
+) : BaseOffer(offerer, amount_available), quantities(quantities), price(price) {}
 
 
 JobOffer::JobOffer(

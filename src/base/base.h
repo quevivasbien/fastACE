@@ -5,24 +5,15 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <utility>
+#include <limits>
 #include <assert.h>
 #include <Eigen/Dense>
+#include "util.h"
 
-class BaseOffer;
+
 class Agent;
 class Person;
 class Firm;
-
-
-// a helper function template for instantiating Agent objects
-// should be included as a friend function in any class that inherits from Agent
-template <typename T, typename ... Args>
-std::shared_ptr<T> create(Args&& ... args) {
-	std::shared_ptr<T> agent = std::shared_ptr<T>(new T(std::forward<Args>(args) ...));
-    agent->economy->add_agent(agent);
-    return agent;
-}
 
 
 struct BaseOffer {
@@ -34,6 +25,7 @@ struct BaseOffer {
     virtual ~BaseOffer() {}
 
     unsigned int amountLeft;
+	unsigned int amountTaken = 0;
     // the agent who posted the offer
     std::shared_ptr<Agent> offerer;
 
@@ -47,12 +39,10 @@ struct Offer : BaseOffer {
     Offer(
         std::shared_ptr<Agent> offerer,
         unsigned int amount_available,
-        std::vector<unsigned int> good_ids,
         Eigen::ArrayXd quantities,
         double price
     );
 
-    std::vector<unsigned int> good_ids;
     Eigen::ArrayXd quantities;
     double price;
 };
@@ -108,6 +98,7 @@ public:
     unsigned int get_numGoods() const;
     const std::vector<std::shared_ptr<const Offer>>& get_market() const;
     const std::vector<std::shared_ptr<const JobOffer>>& get_jobMarket() const;
+    std::default_random_engine get_rng() const;
 
     void add_offer(std::shared_ptr<const Offer> offer);
     void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
@@ -121,12 +112,12 @@ protected:
     unsigned int numGoods;  // equal to goods.size()
     std::vector<std::shared_ptr<const Offer>> market;
     std::vector<std::shared_ptr<const JobOffer>> laborMarket;
+    std::default_random_engine rng;
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
 
-    void flush_market();  // clear claimed offers
-    void flush_labor_market();  // clear claimed job offers
-
+    template <typename T>
+    friend void flush(std::vector<std::shared_ptr<T>>& offers);
 };
 
 
@@ -192,8 +183,8 @@ protected:
     void accept_offer_response(std::shared_ptr<Offer> offer);
     // creates a new firm with this agent as the first owner
     virtual void create_firm();
-    // clear unavailable offers or responses
-    void flush_myOffers();
+    // clear unavailable offers
+    friend void flush<Offer>(std::vector<std::shared_ptr<Offer>>& offers);
 };
 
 
@@ -252,8 +243,6 @@ protected:
     virtual void check_myJobOffers();
     void accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer);
     void post_jobOffer(std::shared_ptr<JobOffer> jobOffer);
-    // clear unavailable job offers
-    void flush_myJobOffers();
 };
 
 

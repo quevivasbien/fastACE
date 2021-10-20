@@ -16,7 +16,7 @@ bool Agent::time_step() {
     if (time != economy->get_time()) {
         time++;
         check_my_offers();
-        flush_myOffers();
+        flush<Offer>(myOffers);
         return true;  // completed successfully
     }
     else {
@@ -96,9 +96,7 @@ bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
         if (accepted) {
             // complete the transaction on this end
             money -= offer->price;
-            for (auto i : offer->good_ids) {
-                inventory(i) += offer->quantities(i);
-            }
+            inventory += offer->quantities;
             // transaction successful
             return true;
         }
@@ -121,12 +119,10 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_
     }
     // need to use myCopy from here since it's not const
     // make sure this agent can actually afford the transaction
-    for (auto i : myCopy->good_ids) {
-        if (inventory(i) < myCopy->quantities(i)) {
-            // mark for removal and return false
-            myCopy->amountLeft = 0;
-            return false;
-        }
+    if ((inventory < myCopy->quantities).any()) {
+        // mark for removal and return false
+        myCopy->amountLeft = 0;
+        return false;
     }
     // all good, let's go!
     accept_offer_response(myCopy);
@@ -135,31 +131,16 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_
 
 void Agent::accept_offer_response(std::shared_ptr<Offer> offer) {
     money += offer->price;
-    for (auto i : offer->good_ids) {
-        inventory(i) -= offer->quantities(i);
-    }
+    inventory -= offer->quantities;
     // change listing to -= 1 amount available
     offer->amountLeft--;
+    // mark that one of these has actually been sold
+    offer->amountTaken++;
 }
 
 
 void Agent::create_firm() {
     economy->add_firm(shared_from_this());
-}
-
-void Agent::flush_myOffers() {
-    // figure out which myOffers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < myOffers.size(); i++) {
-        if (!myOffers[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those myOffers
-    for (auto i : idxs) {
-        myOffers[i] = myOffers.back();
-        myOffers.pop_back();
-    }
 }
 
 

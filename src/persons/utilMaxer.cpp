@@ -1,27 +1,4 @@
-#include <algorithm>
-#include <random>
-#include <limits>
 #include "utilMaxer.h"
-
-auto rng = std::default_random_engine {};
-
-template <typename T>
-std::vector<std::shared_ptr<const T>> filter_available(
-    const std::vector<std::shared_ptr<const T>>& offers,
-    bool shuffle
-) {
-    std::vector<std::shared_ptr<const T>> availOffers;
-    availOffers.reserve(offers.size());
-    for (auto offer : offers) {
-        if (offer->is_available()) {
-            availOffers.push_back(offer);
-        }
-    }
-    if (shuffle) {
-        std::shuffle(std::begin(availOffers), std::end(availOffers), rng);
-    }
-    return availOffers;
-}
 
 GoodChooser::GoodChooser(UtilMaxer* parent) : parent(parent) {}
 JobChooser::JobChooser(UtilMaxer* parent) : parent(parent) {}
@@ -214,7 +191,7 @@ std::vector<Order<Offer>> GreedyGoodChooser::choose_goods(
     // can't use linear programming either, since util is not linear
     // the algorithm used here gets only an approximate solution in most cases
 
-    const auto availOffers = filter_available<Offer>(parent->get_economy()->get_market(), shuffle);
+    const auto availOffers = filter_available<Offer>(parent->get_economy()->get_market(), parent->get_economy()->get_rng());
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 
@@ -332,7 +309,7 @@ std::vector<Order<JobOffer>> GreedyJobChooser::choose_jobs(
     bool shuffle
 ) {
     // TODO: heat analogy is not quite right for this problem, so modify implementation
-    const auto availOffers = filter_available<JobOffer>(parent->get_economy()->get_jobMarket(), shuffle);
+    const auto availOffers = filter_available<JobOffer>(parent->get_economy()->get_jobMarket(), parent->get_economy()->get_rng());
     unsigned int numOffers = availOffers.size();
     Eigen::ArrayXi numTaken = Eigen::ArrayXi::Zero(numOffers);  // number of each offer taken
 

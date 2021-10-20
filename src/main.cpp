@@ -7,7 +7,7 @@ int main() {
     std::vector<std::string> goods = {"wheat", "milk"};
     Economy economy(goods);
     auto person = create<UtilMaxer>(&economy);
-    auto firm = create<ProfitMaxer>(&economy, person, 0);
+    auto firm = ProfitMaxer::init(&economy, person, 0);
     economy.add_agent(person);
     economy.add_agent(firm);
     economy.time_step();
