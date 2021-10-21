@@ -11,6 +11,11 @@ Firm::Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::
     : Agent(economy, inventory, money), owners(owners) {}
 
 
+std::string Firm::get_typename() const {
+    return "Firm";
+}
+
+
 double Firm::get_laborHired() const {
     return laborHired;
 }
@@ -26,6 +31,7 @@ bool Firm::time_step() {
         buy_goods();
         produce();
         sell_goods();
+        pay_dividends();
         laborHired = 0.0;
         search_for_laborers();
         return true;

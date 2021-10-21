@@ -144,16 +144,20 @@ void Agent::create_firm() {
 }
 
 
-void Agent::print_summary() {
-    std::cout << "----------" << std::endl
-        << "Memory ID: " << this << std::endl
-        << "----------" << std::endl;
-    std::cout << "Economy: " << economy << std::endl;
-    std::cout << "Time: " << time << std::endl << std::endl;
-    std::cout << "Inventory:" << std::endl;
+std::string Agent::get_typename() const {
+    return "Agent";
+}
+
+
+void Agent::print_summary() const {
+    std::cout << "\n----------\n"
+        << "Memory ID: " << this
+        << "\n----------\n";
+    std::cout << "Time: " << time << "\n\n";
+    std::cout << "Inventory:\n";
     for (unsigned int i = 0; i < economy->get_numGoods(); i++) {
         const std::string* good_name = economy->get_name_for_good_id(i);
-        std::cout << *good_name << ": " << inventory(i) << std::endl;
+        std::cout << *good_name << ": " << inventory(i) << '\n';
     }
-    std::cout << std::endl << "Money: " << money << std::endl << std::endl;
+    std::cout << "\nMoney: " << money << "\n\n";
 }

@@ -35,14 +35,20 @@ void UtilMaxer::init_decisionMaker() {
     decisionMaker->parent = std::static_pointer_cast<UtilMaxer>(shared_from_this());
 }
 
+std::string UtilMaxer::get_typename() const {
+    return "UtilMaxer";
+}
+
 double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
     return utilFunc->f(quantities);
 }
 
 void UtilMaxer::buy_goods() {
+    print_status(this, "buying goods...");
     std::vector<Order<Offer>> orders = decisionMaker->choose_goods();
     for (auto order : orders) {
-        for (unsigned int i; i < order.amount; i++) {
+        print(order.amount);
+        for (unsigned int i = 0; i < order.amount; i++) {
             respond_to_offer(order.offer);
             // TODO: Handle cases where response is rejected
         }
@@ -51,9 +57,10 @@ void UtilMaxer::buy_goods() {
 
 
 void UtilMaxer::search_for_jobs() {
+    print_status(this, "searching for jobs...");
     std::vector<Order<JobOffer>> orders = decisionMaker->choose_jobs();
     for (auto order : orders) {
-        for (unsigned int i; i < order.amount; i++) {
+        for (unsigned int i = 0; i < order.amount; i++) {
             respond_to_jobOffer(order.offer);
             // TODO: Handle cases where response is rejected
         }
@@ -62,6 +69,7 @@ void UtilMaxer::search_for_jobs() {
 
 
 void UtilMaxer::consume_goods() {
+    print_status(this, "consuming goods...");
     // just consumes all goods
     inventory -= decisionMaker->choose_goods_to_consume();
 }
@@ -94,7 +102,7 @@ struct GoodChooser {
 
     int find_best_offer() {
         double base_u = parent->u(quantities);
-        double best_util_per_cost = 0.0;
+        double best_util_per_cost = -constants::eps;
         int bestIdx = -1;
         for (int i = 0; i < numOffers; i++) {
             if ((offers[i]->amountLeft > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
@@ -151,17 +159,20 @@ struct GoodChooser {
     std::vector<Order<Offer>> choose_goods() {
         fill_basket();
         int offersInBasket = numTaken.sum();
+        // print(offersInBasket);
         int heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
         while (heat > 0) {
             empty_basket();
             fill_basket();
             offersInBasket = numTaken.sum();
+            // print(offersInBasket);
             heat = ((heat <= offersInBasket) ? heat : offersInBasket) - 1;
         }
 
         std::vector<Order<Offer>> orders;
         for (unsigned int i = 0; i < numOffers; i++) {
             if (numTaken(i) > 0) {
+                std::cout << offers[i]->quantities.transpose() << ' ' << numTaken(i) << '\n';
                 orders.push_back(Order<Offer>(offers[i], numTaken(i)));
             }
         }
@@ -259,7 +270,7 @@ std::vector<Order<JobOffer>> BasicPersonDecisionMaker::choose_jobs() {
     BasicPersonDecisionMakerHelperClasses::JobChooser jobChooser(
         availOffers,
         availOffers.size(),
-        parent->get_laborSupplied()
+        1.0 - parent->get_laborSupplied()
     );
     return jobChooser.choose_jobs();
 }

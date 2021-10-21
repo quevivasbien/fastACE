@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <string>
 #include "constants.h"
 
 inline std::default_random_engine get_rng() {
@@ -74,6 +75,16 @@ void print(Args&& ... args) {
     		std::cout << arg << ' ';
     	}
     	std::cout << '\n';
+    }
+}
+
+
+template <typename T>
+inline void print_status(T* origin, std::string status) {
+    if (constants::verbose) {
+        std::cout << origin
+            << " (" << origin->get_typename() << ") : "
+            << status << '\n';
     }
 }
 

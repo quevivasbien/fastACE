@@ -40,6 +40,8 @@ public:
 
     double u(const Eigen::ArrayXd& quantities);  // alias for utilFunc.f
 
+    virtual std::string get_typename() const override;
+
 protected:
     UtilMaxer(Economy* economy);
     UtilMaxer(

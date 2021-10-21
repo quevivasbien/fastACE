@@ -32,6 +32,9 @@ public:
 
     Eigen::ArrayXd f(double labor, const Eigen::ArrayXd& quantities);
     double get_revenue(double labor, const Eigen::ArrayXd& quantities, const Eigen::ArrayXd& prices);
+
+    virtual std::string get_typename() const override;
+
 protected:
     ProfitMaxer(
         Economy* economy,

@@ -102,6 +102,8 @@ public:
     void add_offer(std::shared_ptr<const Offer> offer);
     void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
 
+    virtual void print_summary() const;
+
 protected:
     std::vector<std::shared_ptr<Person>> persons;
     std::vector<std::shared_ptr<Firm>> firms;
@@ -110,7 +112,7 @@ protected:
     std::vector<std::string> goods;
     unsigned int numGoods;  // equal to goods.size()
     std::vector<std::shared_ptr<const Offer>> market;
-    std::vector<std::shared_ptr<const JobOffer>> laborMarket;
+    std::vector<std::shared_ptr<const JobOffer>> jobMarket;
     std::default_random_engine rng;
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
@@ -144,8 +146,9 @@ public:
     // default implementation accepts all valid responses
     virtual bool review_offer_response(std::shared_ptr<Agent> responder, std::shared_ptr<const Offer> offer);
 
+    virtual std::string get_typename() const;
     // print a summary of this agent's current status
-    virtual void print_summary();
+    virtual void print_summary() const;
 
 protected:
     Agent(Economy* economy);
@@ -193,8 +196,15 @@ public:
     template <typename T, typename ... Args>
 	friend std::shared_ptr<T> create(Args&& ... args);
 
+    template <typename ... Args>
+    static std::shared_ptr<Person> init(Args&& ... args) {
+        return create<Person>(std::forward<Args>(args) ...);
+    }
+
 	double get_laborSupplied() const;
     bool time_step() override;
+
+    virtual std::string get_typename() const override;
 
 protected:
     Person(Economy* economy);
@@ -216,6 +226,11 @@ public:
     template <typename T, typename ... Args>
 	friend std::shared_ptr<T> create(Args&& ... args);
 
+    template <typename ... Args>
+    static std::shared_ptr<Firm> init(Args&& ... args) {
+        return create<Firm>(std::forward<Args>(args) ...);
+    }
+
     virtual void search_for_laborers() {};  // currently does nothing
     virtual void produce() {};  // currently does nothing
     virtual void pay_dividends() {};  // currently does nothing
@@ -228,6 +243,8 @@ public:
 
 	double get_laborHired() const;
     bool time_step() override;
+
+    virtual std::string get_typename() const override;
 
 protected:
     Firm(Economy* economy, std::shared_ptr<Agent> owner);

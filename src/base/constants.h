@@ -9,6 +9,7 @@ namespace constants {
     const double defaultWage = 1.0;
     const double laborIncrement = 0.25;
     const unsigned int heat = 5;
+    const double eps = 0.0001;
 }
 
 #endif
