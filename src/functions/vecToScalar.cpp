@@ -28,7 +28,7 @@ void VecToScalar::check_no_length_change(const Vec& candidate) const {
 
 
 
-
+Linear::Linear(unsigned int numInputs) : VecToScalar(numInputs), productivities(Eigen::ArrayXd::Constant(numInputs, 1.0)) {}
 Linear::Linear(const Vec& productivities) : VecToScalar(productivities.size()), productivities(productivities) {}
 
 double Linear::f(const Vec& quantities) const {

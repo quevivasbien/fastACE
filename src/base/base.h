@@ -5,7 +5,6 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <limits>
 #include <assert.h>
 #include <Eigen/Dense>
 #include "util.h"

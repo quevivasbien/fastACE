@@ -7,6 +7,8 @@
 #include <random>
 #include <algorithm>
 #include <chrono>
+#include <iostream>
+#include "constants.h"
 
 inline std::default_random_engine get_rng() {
     unsigned int seed = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -61,6 +63,17 @@ void flush(std::vector<std::shared_ptr<T>>& offers) {
     for (auto i : idxs) {
         offers[i] = offers.back();
         offers.pop_back();
+    }
+}
+
+
+template <typename ... Args>
+void print(Args&& ... args) {
+    if (constants::verbose) {
+        for (auto arg : {args...}) {
+    		std::cout << arg << ' ';
+    	}
+    	std::cout << '\n';
     }
 }
 

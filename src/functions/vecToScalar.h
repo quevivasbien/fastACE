@@ -31,6 +31,7 @@ protected:
 class Linear : public VecToScalar {
     // Perfect substitutes
 public:
+    Linear(unsigned int numInputs);
     Linear(const Vec& productivities);
     virtual double f(const Vec& quantities) const override;
     virtual double df(const Vec& quantities, unsigned int idx) const override;

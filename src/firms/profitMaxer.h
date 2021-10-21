@@ -2,29 +2,19 @@
 #define PROFITMAXER_H
 
 #include "base.h"
+#include "constants.h"
 #include "vecToVec.h"
 
-namespace constants {
-    const double defaultPrice = 1.0;
-    const double priceMultiplier = 1.1;
-    const double defaultLaborBudget = 0.5;
-    const double defaultWage = 1.0;
-    const double laborIncrement = 0.25;
-    const unsigned int heat = 5;
-}
 
 class ProfitMaxer;
 
-class FirmDecisionMaker {
-public:
+struct FirmDecisionMaker {
     virtual Eigen::ArrayXd choose_production_inputs() = 0;
     virtual std::vector<std::shared_ptr<Offer>> choose_good_offers() = 0;
     virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() = 0;
     virtual std::vector<Order<Offer>> choose_goods() = 0;
-
-    std::shared_ptr<ProfitMaxer> parent;
-protected:
     FirmDecisionMaker(std::shared_ptr<ProfitMaxer> parent);
+    std::shared_ptr<ProfitMaxer> parent;
 };
 
 
@@ -77,7 +67,7 @@ protected:
     std::shared_ptr<FirmDecisionMaker> decisionMaker;
 };
 
-class BasicFirmDecisionMaker : public FirmDecisionMaker {
+struct BasicFirmDecisionMaker : FirmDecisionMaker {
 public:
     BasicFirmDecisionMaker();
     BasicFirmDecisionMaker(std::shared_ptr<ProfitMaxer> parent);

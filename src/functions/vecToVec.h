@@ -2,6 +2,7 @@
 #define VECTOVEC_H
 
 #include <memory>
+#include <vector>
 #include <Eigen/Dense>
 #include "vecToScalar.h"
 
@@ -40,6 +41,19 @@ public:
 protected:
     std::shared_ptr<VecToScalar> vecToScalar;
     unsigned int outputIndex;
+};
+
+
+class SumOfVecToVec : public VecToVec {
+    // contains a list of VecToVecs with identical input and output dimensions
+    // output will be sum of outputs for VecToVecs in the list
+public:
+    SumOfVecToVec(std::vector<std::shared_ptr<VecToVec>> innerFunctions);
+    Vec f(const Vec& quantities) const override;
+    double df(const Vec& quantities, unsigned int i, unsigned int j) const override;
+protected:
+    std::vector<std::shared_ptr<VecToVec>> innerFunctions;
+    unsigned int numInnerFunctions;
 };
 
 #endif
