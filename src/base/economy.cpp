@@ -1,6 +1,8 @@
 #include "base.h"
 
-Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {}
+Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {
+    rng = get_rng();
+}
 
 std::shared_ptr<Person> Economy::add_person() {
     return create<Person>(this);
@@ -29,40 +31,12 @@ const std::vector<std::shared_ptr<Firm>>& Economy::get_firms() const { return fi
 const std::vector<std::string>& Economy::get_goods() const { return goods; }
 unsigned int Economy::get_numGoods() const { return numGoods; }
 const std::vector<std::shared_ptr<const Offer>>& Economy::get_market() const { return market; }
-const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_jobMarket() const { return laborMarket; }
+const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_jobMarket() const { return jobMarket; }
+std::default_random_engine Economy::get_rng() const { return rng; }
 
 void Economy::add_offer(std::shared_ptr<const Offer> offer) { market.push_back(offer); }
-void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) { laborMarket.push_back(jobOffer); }
+void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) { jobMarket.push_back(jobOffer); }
 
-void Economy::flush_market() {
-    // figure out which offers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < market.size(); i++) {
-        if (!market[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those offers
-    for (auto i : idxs) {
-        market[i] = market.back();
-        market.pop_back();
-    }
-}
-
-void Economy::flush_labor_market() {
-    // figure out which offers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < laborMarket.size(); i++) {
-        if (!laborMarket[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those laborMarket
-    for (auto i : idxs) {
-        laborMarket[i] = laborMarket.back();
-        laborMarket.pop_back();
-    }
-}
 
 bool Economy::time_step() {
     // check that all agents have caught up before stepping
@@ -77,15 +51,39 @@ bool Economy::time_step() {
         }
     }
     time++;
-    // TODO: randomize order of movement
     // now actually step
+    std::shuffle(std::begin(persons), std::end(persons), rng);
     for (auto person : persons) {
         person->time_step();
     }
+    std::shuffle(std::begin(firms), std::end(firms), rng);
     for (auto firm : firms) {
         firm->time_step();
     }
-    flush_market();
-    flush_labor_market();
+    flush<const Offer>(market);
+    flush<const JobOffer>(jobMarket);
     return true;
+}
+
+
+void Economy::print_summary() const {
+    std::cout << "\n----------\n"
+        << "Memory ID: " << this << " (Economy)\n"
+        << "----------\n";
+    std::cout << "Time: " << time << "\n\n";
+    std::cout << "Offers:\n";
+    for (auto offer : market) {
+        std::cout << "Offerer: " << offer->offerer << " ~ amt left: " << offer->amountLeft
+            << " ~ amt taken: " << offer->amountTaken
+            << "\n price: " << offer->price << " ~ quantitities " << offer->quantities.transpose()
+            << '\n';
+    }
+    std::cout << "\nJob Offers:\n";
+    for (auto offer : jobMarket) {
+        std::cout << "Offerer: " << offer->offerer << " ~ amt left: " << offer->amountLeft
+            << " ~ amt taken: " << offer->amountTaken
+            << "\n wage: " << offer->wage << " ~ labor " << offer->labor
+            << '\n';
+    }
+    std::cout << "\n\n";
 }

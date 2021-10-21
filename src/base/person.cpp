@@ -6,6 +6,10 @@ Person::Person(
     Economy* economy, Eigen::ArrayXd inventory, double money
 ) : Agent(economy, inventory, money) {}
 
+std::string Person::get_typename() const {
+    return "Person";
+}
+
 
 double Person::get_laborSupplied() const {
     return laborSupplied;
