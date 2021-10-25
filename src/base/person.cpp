@@ -22,8 +22,11 @@ bool Person::time_step() {
     }
     else {
         laborSupplied = 0.0;
+        print_status(this, "Searching for job...");
         search_for_jobs();
+        print_status(this, "Buying goods...");
         buy_goods();
+        print_status(this, "Consuming goods...");
         consume_goods();
         return true;
     }
@@ -37,6 +40,7 @@ bool Person::respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
             std::static_pointer_cast<Person>(shared_from_this()), jobOffer
         );
         if (accepted) {
+            std::lock_guard<std::mutex> lock(myMutex);
             labor += jobOffer->labor;
             money += jobOffer->wage;
             return true;

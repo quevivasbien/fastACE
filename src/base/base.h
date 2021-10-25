@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <thread>
+#include <mutex>
 #include <assert.h>
 #include <Eigen/Dense>
 #include "util.h"
@@ -117,6 +119,8 @@ protected:
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
 
+    std::mutex mutex;
+
     template <typename T>
     friend void flush(std::vector<std::shared_ptr<T>>& offers);
 };
@@ -160,14 +164,14 @@ protected:
     std::vector<std::shared_ptr<Offer>> myOffers;
     double money;
     unsigned int time;
-
-
     // the amount of labor this agent is currently using
     // for agents, cannot exceed 1.0
     // for firms, it's the amount of labor hired from Persons
     // typically reset to zero at the beginning of every period
-	// TODO: make labor a different variable for firms and persons
     double labor = 0.0;
+
+    std::mutex myMutex;
+
 
     void add_to_inventory(unsigned int good_id, double quantity);
     void add_money(double amount);

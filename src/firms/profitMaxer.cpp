@@ -72,13 +72,11 @@ double ProfitMaxer::get_revenue(
 
 
 void ProfitMaxer::produce() {
-    print_status(this, "producing...");
     Eigen::ArrayXd inputs = decisionMaker->choose_production_inputs();
     inventory += (f(laborHired, inputs) - inputs);
 }
 
 void ProfitMaxer::sell_goods() {
-    print_status(this, "selling goods...");
     auto newOffers = decisionMaker->choose_good_offers();
     // remove last round's offers from the market before posting new offers
     for (auto offer : myOffers) {
@@ -90,7 +88,6 @@ void ProfitMaxer::sell_goods() {
 }
 
 void ProfitMaxer::search_for_laborers() {
-    print_status(this, "searching for laborers...");
     auto newJobOffers = decisionMaker->choose_job_offers();
     // remove last round's offers from the market before posting new offers
     for (auto offer : myJobOffers) {
@@ -102,7 +99,6 @@ void ProfitMaxer::search_for_laborers() {
 }
 
 void ProfitMaxer::buy_goods() {
-    print_status(this, "buying goods...");
     auto orders = decisionMaker->choose_goods();
     for (auto order : orders) {
         for (unsigned int i = 0; i < order.amount; i++) {
@@ -117,8 +113,14 @@ BasicFirmDecisionMaker::BasicFirmDecisionMaker(std::shared_ptr<ProfitMaxer> pare
 BasicFirmDecisionMaker::BasicFirmDecisionMaker() : BasicFirmDecisionMaker(nullptr) {}
 
 Eigen::ArrayXd BasicFirmDecisionMaker::choose_production_inputs() {
-    // just uses all available goods
-    return parent->get_inventory();
+    // if can produce something, just uses all available goods
+    auto inventory = parent->get_inventory();
+    if ((parent->f(parent->get_laborHired(), inventory) > 0.0).any()) {
+        return inventory;
+    }
+    else {
+        return Eigen::ArrayXd::Zero(inventory.size());
+    }
 }
 
 double BasicFirmDecisionMaker::choose_price(unsigned int idx) {
@@ -185,7 +187,7 @@ struct GoodChooser {
         offers(offers),
         sellingPrices(sellingPrices),
         numOffers(numOffers),
-        quantities(Eigen::ArrayXd::Zero(sellingPrices.size())),
+        quantities(Eigen::ArrayXd::Constant(sellingPrices.size(), constants::eps)),
         numTaken(Eigen::ArrayXi::Zero(numOffers))
     {}
 
@@ -202,7 +204,7 @@ struct GoodChooser {
 
     int find_best_offer() {
         double base_rev = parent->get_revenue(labor, quantities, sellingPrices);
-        double best_rev_per_cost = -constants::eps;
+        double best_rev_per_cost = 0.0;
         int bestIdx = -1;
         for (int i = 0; i < numOffers; i++) {
             if ((offers[i]->amountLeft > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
@@ -353,7 +355,6 @@ std::vector<Order<Offer>> BasicFirmDecisionMaker::choose_goods(
     const Eigen::ArrayXd& sellingPrices
 ) {
     // go through a process similar to the one done by UtilMaxer::choose_goods()
-    // print_status(this, "BasicFirmDecisionMaker : choosing goods...");
     BasicFirmDecisionMakerHelperClasses::GoodChooser goodChooser(
         parent, labor, money, availOffers, availOffers.size(), sellingPrices
     );

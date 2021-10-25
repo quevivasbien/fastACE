@@ -10,3 +10,4 @@ set(SRC ${CMAKE_SOURCE_DIR}/src)
 
 add_subdirectory(src ${CMAKE_BINARY_DIR})
 
+add_compile_options(-Wall -pthread)

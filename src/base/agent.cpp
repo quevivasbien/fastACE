@@ -16,7 +16,9 @@ bool Agent::time_step() {
     if (time != economy->get_time()) {
         time++;
         check_my_offers();
+        myMutex.lock();
         flush<Offer>(myOffers);
+        myMutex.unlock();
         return true;  // completed successfully
     }
     else {
@@ -31,14 +33,17 @@ const Eigen::ArrayXd& Agent::get_inventory() const { return inventory; }
 
 
 void Agent::add_to_inventory(unsigned int good_id, double quantity) {
+    std::lock_guard<std::mutex> lock(myMutex);
     inventory[good_id] += quantity;
 }
 
 void Agent::add_money(double amount) {
+    std::lock_guard<std::mutex> lock(myMutex);
     money += amount;
 }
 
 void Agent::post_offer(std::shared_ptr<Offer> offer) {
+    std::lock_guard<std::mutex> lock(myMutex);
     // check that the offerer is the person listing it
     assert(offer->offerer == shared_from_this());
     economy->add_offer(offer);
@@ -80,6 +85,7 @@ void update_offer_amount_left(
 void Agent::check_my_offers() {
     // default implementation just checks whether this agent can actually still fulfill all posted offers
     // inventoryLeft keeps track of how much of each good would be left after filling offers
+    std::lock_guard<std::mutex> lock(myMutex);
     Eigen::ArrayXd inventoryLeft = inventory;
     for (auto offer : myOffers) {
         // changes inventoryLeft and offer->amountLeft in place
@@ -94,6 +100,7 @@ bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
     if (money >= offer->price) {
         bool accepted = offer->offerer->review_offer_response(shared_from_this(), offer);
         if (accepted) {
+            std::lock_guard<std::mutex> lock(myMutex);
             // complete the transaction on this end
             money -= offer->price;
             inventory += offer->quantities;
@@ -106,6 +113,7 @@ bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
 }
 
 bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_ptr<const Offer> offer) {
+    myMutex.lock();
     // check that the offer is in myOffers
     std::shared_ptr<Offer> myCopy;
     for (auto myOffer : myOffers) {
@@ -124,12 +132,14 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_
         myCopy->amountLeft = 0;
         return false;
     }
+    myMutex.unlock();
     // all good, let's go!
     accept_offer_response(myCopy);
     return true;
 }
 
 void Agent::accept_offer_response(std::shared_ptr<Offer> offer) {
+    std::lock_guard<std::mutex> lock(myMutex);
     money += offer->price;
     inventory -= offer->quantities;
     // change listing to -= 1 amount available
@@ -151,8 +161,8 @@ std::string Agent::get_typename() const {
 
 void Agent::print_summary() const {
     std::cout << "\n----------\n"
-        << "Memory ID: " << this
-        << "\n----------\n";
+        << "Memory ID: " << this << " (" << get_typename() << ")\n"
+        << "----------\n";
     std::cout << "Time: " << time << "\n\n";
     std::cout << "Inventory:\n";
     for (unsigned int i = 0; i < economy->get_numGoods(); i++) {

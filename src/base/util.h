@@ -70,7 +70,7 @@ void flush(std::vector<std::shared_ptr<T>>& offers) {
 
 template <typename ... Args>
 void print(Args&& ... args) {
-    if (constants::verbose) {
+    if (constants::verbose > 0) {
         for (auto arg : {args...}) {
     		std::cout << arg << ' ';
     	}
@@ -78,10 +78,17 @@ void print(Args&& ... args) {
     }
 }
 
+template <typename ... Args>
+void print(unsigned int priority, Args&& ... args) {
+    if (constants::verbose >= priority) {
+        print({args...});
+    }
+}
+
 
 template <typename T>
 inline void print_status(T* origin, std::string status) {
-    if (constants::verbose) {
+    if (constants::verbose >= 2) {
         std::cout << origin
             << " (" << origin->get_typename() << ") : "
             << status << '\n';
