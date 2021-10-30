@@ -245,6 +245,7 @@ std::vector<Order<Offer>> BasicPersonDecisionMaker::choose_goods() {
     // the algorithm used here gets only an approximate solution in most cases
 
     const auto availOffers = filter_available<Offer>(
+        parent,
         parent->get_economy()->get_market(),
         parent->get_economy()->get_rng()
     );
@@ -260,6 +261,7 @@ std::vector<Order<Offer>> BasicPersonDecisionMaker::choose_goods() {
 
 std::vector<Order<JobOffer>> BasicPersonDecisionMaker::choose_jobs() {
     const auto availOffers = filter_available<JobOffer>(
+        parent,
         parent->get_economy()->get_jobMarket(),
         parent->get_economy()->get_rng()
     );

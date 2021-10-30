@@ -16,9 +16,10 @@ bool Agent::time_step() {
     if (time != economy->get_time()) {
         time++;
         check_my_offers();
-        myMutex.lock();
-        flush<Offer>(myOffers);
-        myMutex.unlock();
+        {
+            std::lock_guard<std::mutex> lock(myMutex);
+            flush<Offer>(myOffers);
+        }
         return true;  // completed successfully
     }
     else {
@@ -98,6 +99,7 @@ void Agent::check_my_offers() {
 bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
     // check that the agent actually has enough money, then send to offerer
     if (money >= offer->price) {
+        print_status(this, "Asking for offer acceptance...");
         bool accepted = offer->offerer->review_offer_response(shared_from_this(), offer);
         if (accepted) {
             std::lock_guard<std::mutex> lock(myMutex);
@@ -113,26 +115,33 @@ bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
 }
 
 bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_ptr<const Offer> offer) {
-    myMutex.lock();
-    // check that the offer is in myOffers
     std::shared_ptr<Offer> myCopy;
-    for (auto myOffer : myOffers) {
-        if (myOffer == offer) {
-            myCopy = myOffer;
-            break;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        print_status(this, "Reviewing offer response...");
+        if (!offer->is_available()) {
+            print_status(this, "Requested offer is not available.");
+            return false;
+        }
+        // check that the offer is in myOffers
+        for (auto myOffer : myOffers) {
+            if (myOffer == offer) {
+                myCopy = myOffer;
+                break;
+            }
+        }
+        if (myCopy == nullptr) {
+            return false;
+        }
+        // need to use myCopy from here since it's not const
+        // make sure this agent can actually afford the transaction
+        if ((inventory < myCopy->quantities).any()) {
+            print_status(this, "I can't afford to fulfill this offer.");
+            // mark for removal and return false
+            myCopy->amountLeft = 0;
+            return false;
         }
     }
-    if (myCopy == nullptr) {
-        return false;
-    }
-    // need to use myCopy from here since it's not const
-    // make sure this agent can actually afford the transaction
-    if ((inventory < myCopy->quantities).any()) {
-        // mark for removal and return false
-        myCopy->amountLeft = 0;
-        return false;
-    }
-    myMutex.unlock();
     // all good, let's go!
     accept_offer_response(myCopy);
     return true;
@@ -140,6 +149,7 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_
 
 void Agent::accept_offer_response(std::shared_ptr<Offer> offer) {
     std::lock_guard<std::mutex> lock(myMutex);
+    print_status(this, "Accepting offer response...");
     money += offer->price;
     inventory -= offer->quantities;
     // change listing to -= 1 amount available

@@ -164,11 +164,6 @@ protected:
     std::vector<std::shared_ptr<Offer>> myOffers;
     double money;
     unsigned int time;
-    // the amount of labor this agent is currently using
-    // for agents, cannot exceed 1.0
-    // for firms, it's the amount of labor hired from Persons
-    // typically reset to zero at the beginning of every period
-    double labor = 0.0;
 
     std::mutex myMutex;
 

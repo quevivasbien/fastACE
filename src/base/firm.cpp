@@ -28,9 +28,10 @@ bool Firm::time_step() {
     else {
         print_status(this, "Checking my job offers...");
         check_myJobOffers();
-        myMutex.lock();
-        flush<JobOffer>(myJobOffers);
-        myMutex.unlock();
+        {
+            std::lock_guard<std::mutex> lock(myMutex);
+            flush<JobOffer>(myJobOffers);
+        }
         print_status(this, "Buying goods...");
         buy_goods();
         print_status(this, "Producing...");
@@ -57,26 +58,32 @@ bool Firm::review_jobOffer_response(
     std::shared_ptr<Person> responder,
     std::shared_ptr<const JobOffer> jobOffer
 ) {
-    myMutex.lock();
-    // check that the offer is in myOffers
     std::shared_ptr<JobOffer> myCopy;
-    for (auto myOffer : myJobOffers) {
-        if (myOffer == jobOffer) {
-            myCopy = myOffer;
-            break;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        if (!jobOffer->is_available()) {
+            print_status(this, "Requested offer is not available.");
+            return false;
+        }
+        // check that the offer is in myOffers
+        for (auto myOffer : myJobOffers) {
+            if (myOffer == jobOffer) {
+                myCopy = myOffer;
+                break;
+            }
+        }
+        if (myCopy == nullptr) {
+            return false;
+        }
+        // need to use myCopy from here since it's not const
+        // make sure this firm can actually afford to pay the wage
+        if (money < myCopy->wage) {
+            print_status(this, "I can't afford to fulfill this offer.");
+            // mark for removal
+            myCopy->amountLeft = 0;
+            return false;
         }
     }
-    if (myCopy == nullptr) {
-        return false;
-    }
-    // need to use myCopy from here since it's not const
-    // make sure this firm can actually afford to pay the wage
-    if (money < myCopy->wage) {
-        // mark for removal
-        myCopy->amountLeft = 0;
-        return false;
-    }
-    myMutex.unlock();
     // all good, let's go!
     accept_jobOffer_response(myCopy);
     return true;
@@ -97,8 +104,9 @@ void Firm::check_myJobOffers() {
 
 void Firm::accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer) {
     std::lock_guard<std::mutex> lock(myMutex);
+    print_status(this, "Accepting jobOffer response...");
     money -= jobOffer->wage;
-    labor += jobOffer->labor;
+    laborHired += jobOffer->labor;
     jobOffer->amountLeft--;
     jobOffer->amountTaken++;
 }

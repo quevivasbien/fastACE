@@ -11,6 +11,8 @@
 #include <string>
 #include "constants.h"
 
+class Agent;
+
 inline std::default_random_engine get_rng() {
     unsigned int seed = std::chrono::steady_clock::now().time_since_epoch().count();
     return std::default_random_engine(seed);
@@ -19,26 +21,20 @@ inline std::default_random_engine get_rng() {
 // helper function used for filtering offers by availability
 template <typename T>
 std::vector<std::shared_ptr<const T>> filter_available(
+    std::shared_ptr<Agent> requester,
     const std::vector<std::shared_ptr<const T>>& offers,
     std::default_random_engine rng
 ) {
     std::vector<std::shared_ptr<const T>> availOffers;
     availOffers.reserve(offers.size());
     for (auto offer : offers) {
-        if (offer->is_available()) {
+        if (offer->is_available() && (offer->offerer != requester)) {
             availOffers.push_back(offer);
         }
     }
     std::shuffle(std::begin(availOffers), std::end(availOffers), rng);
     return availOffers;
 }
-//
-// template <typename T>
-// std::vector<std::shared_ptr<const T> filter_available(
-//     const std::vector<std::shared_ptr<const T>>& offers
-// ) {
-//     return filter_available<T>(offers, get_rng());
-// }
 
 // a helper function template for instantiating Agent objects
 // should be included as a friend function in any class that inherits from Agent

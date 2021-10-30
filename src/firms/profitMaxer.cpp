@@ -72,6 +72,7 @@ double ProfitMaxer::get_revenue(
 
 
 void ProfitMaxer::produce() {
+    std::lock_guard<std::mutex> lock(myMutex);
     Eigen::ArrayXd inputs = decisionMaker->choose_production_inputs();
     inventory += (f(laborHired, inputs) - inputs);
 }
@@ -79,8 +80,11 @@ void ProfitMaxer::produce() {
 void ProfitMaxer::sell_goods() {
     auto newOffers = decisionMaker->choose_good_offers();
     // remove last round's offers from the market before posting new offers
-    for (auto offer : myOffers) {
-        offer->amountLeft = 0;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        for (auto offer : myOffers) {
+            offer->amountLeft = 0;
+        }
     }
     for (auto offer : newOffers) {
         post_offer(offer);
@@ -89,9 +93,12 @@ void ProfitMaxer::sell_goods() {
 
 void ProfitMaxer::search_for_laborers() {
     auto newJobOffers = decisionMaker->choose_job_offers();
-    // remove last round's offers from the market before posting new offers
-    for (auto offer : myJobOffers) {
-        offer->amountLeft = 0;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        // remove last round's offers from the market before posting new offers
+        for (auto offer : myJobOffers) {
+            offer->amountLeft = 0;
+        }
     }
     for (auto offer : newJobOffers) {
         post_jobOffer(offer);
@@ -343,7 +350,9 @@ std::vector<Order<Offer>> BasicFirmDecisionMaker::choose_goods() {
         sellingPrices(i) = choose_price(i);
     }
     // get available offers
-    auto availOffers = filter_available<Offer>(parent->get_economy()->get_market(), parent->get_economy()->get_rng());
+    auto availOffers = filter_available<Offer>(
+        parent, parent->get_economy()->get_market(), parent->get_economy()->get_rng()
+    );
     // now just plug into big boy friend with default values
     return choose_goods(parent->get_laborHired(), parent->get_money(), availOffers, sellingPrices);
 }
