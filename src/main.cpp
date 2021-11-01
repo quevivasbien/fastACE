@@ -2,7 +2,7 @@
 #include "utilMaxer.h"
 #include "profitMaxer.h"
 
-const int numPeople = 20;
+const int numPeople = 10;
 
 int main() {
     std::vector<std::string> goods = {"bread", "capital"};
@@ -39,7 +39,7 @@ int main() {
 
     auto firm = ProfitMaxer::init(&economy, people, firmInventory, 100.0, prodFunc, firmDecisionMaker);
 
-    for (unsigned int t = 1; t <= 10000; t++) {
+    for (unsigned int t = 1; t <= 10; t++) {
         economy.print_summary();
         // for (auto person : people) {
         //     person->print_summary();

@@ -87,14 +87,41 @@ struct PurchaseNet : torch::nn::Module {
 };
 
 
-struct DecisionMaker {
+class DecisionMaker {
 	// a wrapper for various decision nets
+public:
+	DecisionMaker(Economy* economy);
+private:
 	Economy* economy;
 	std::shared_ptr<OfferEncoder> offerEncoder;
 	std::shared_ptr<PurchaseNet> purchaseNet;
 
+	torch::Tensor encodedOffers;
 
-}
+	void update_encodedOffers() {
+		auto allOffers = economy->get_market();
+		unsigned int numOffers = allOffers.size();
+
+		torch:Tensor offerers = torch::zeros(
+			// NOTE: if the simulation is going to add more agents later,
+			// then the size of this should be set to MORE than totalAgents
+			{numOffers, economy->get_totalAgents()}
+		);
+		torch::Tensor goods = torch::empty(
+			{numOffers, economy->get_numGoods()}
+		);
+		torch::Tensor prices = torch::empty({numOffers, 1});
+
+		for (int i = 0; i < numOffers; i++) {
+			auto offer = allOffers[i];
+			// set offerer
+			offerers[i][economy->get_id_for_agent(offer->offerer)];
+			// set goods
+			// goods[i] = todo, todo
+		}
+	}
+
+};
 
 
 #endif

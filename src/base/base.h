@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <memory>
 #include <thread>
 #include <mutex>
@@ -87,30 +88,29 @@ public:
     unsigned int get_time() const { return time; };
 
     virtual std::shared_ptr<Person> add_person();
-    virtual void add_agent(std::shared_ptr<Person> person);
     virtual std::shared_ptr<Firm> add_firm(std::shared_ptr<Agent> firstOwner);
-    virtual void add_agent(std::shared_ptr<Firm> firm);
+    virtual void add_agent(std::shared_ptr<Agent> agent);
 
     const std::string* get_name_for_good_id(unsigned int id) const;
 
-    const std::vector<std::shared_ptr<Person>>& get_persons() const;
-    const std::vector<std::shared_ptr<Firm>>& get_firms() const;
+    const std::vector<std::shared_ptr<Agent>>& get_agents() const;
     const std::vector<std::string>& get_goods() const;
     unsigned int get_numGoods() const;
     const std::vector<std::shared_ptr<const Offer>>& get_market() const;
     const std::vector<std::shared_ptr<const JobOffer>>& get_jobMarket() const;
-    unsigned int get_numPersons() const;
-    unsigned int get_numFirms() const;
+    unsigned int get_numAgents() const;
     std::default_random_engine get_rng() const;
 
     void add_offer(std::shared_ptr<const Offer> offer);
     void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
 
+    unsigned int get_id_for_agent(std::shared_ptr<Agent> agent);
+    unsigned int get_totalAgents() const;
+
     virtual void print_summary() const;
 
 protected:
-    std::vector<std::shared_ptr<Person>> persons;
-    std::vector<std::shared_ptr<Firm>> firms;
+    std::vector<std::shared_ptr<Agent>> agents;
     // the names of goods for sale
     /// normally these goods will be referred to by their indices in the goods list
     std::vector<std::string> goods;
@@ -120,6 +120,9 @@ protected:
     std::default_random_engine rng;
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
+
+    std::unordered_map<std::shared_ptr<Agent>, unsigned int> agentMap;
+    unsigned int totalAgents = 0;
 
     std::mutex mutex;
 
