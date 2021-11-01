@@ -99,6 +99,8 @@ public:
     unsigned int get_numGoods() const;
     const std::vector<std::shared_ptr<const Offer>>& get_market() const;
     const std::vector<std::shared_ptr<const JobOffer>>& get_jobMarket() const;
+    unsigned int get_numPersons() const;
+    unsigned int get_numFirms() const;
     std::default_random_engine get_rng() const;
 
     void add_offer(std::shared_ptr<const Offer> offer);

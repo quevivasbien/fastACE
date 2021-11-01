@@ -34,6 +34,8 @@ const std::vector<std::string>& Economy::get_goods() const { return goods; }
 unsigned int Economy::get_numGoods() const { return numGoods; }
 const std::vector<std::shared_ptr<const Offer>>& Economy::get_market() const { return market; }
 const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_jobMarket() const { return jobMarket; }
+unsigned int Economy::get_numPersons() const { return persons.size(); }
+unsigned int Economy::get_numFirms() const { return firms.size(); }
 std::default_random_engine Economy::get_rng() const { return rng; }
 
 void Economy::add_offer(std::shared_ptr<const Offer> offer) {
