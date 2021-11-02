@@ -1,5 +1,14 @@
 #include "decisionNets.h"
 
+torch::Tensor eigenToTorch(Eigen::ArrayXd eigenArray) {
+    auto t = torch::empty({eigenArray.cols(),eigenArray.rows()});
+    float* data = t.data_ptr<float>();
+
+    Eigen::Map<Eigen::ArrayXf> arrayMap(data, t.size(1), t.size(0));
+    arrayMap = eigenArray.cast<float>();
+    return t.transpose(0, 1);
+}
+
 
 OfferEncoder::OfferEncoder(
 	int stackSize,

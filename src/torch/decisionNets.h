@@ -5,7 +5,12 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <Eigen/Dense>
 #include "base.h"
+
+
+// converts an Eigen::ArrayXd to a torch::Tensor
+torch::Tensor eigenToTorch(Eigen::ArrayXd eigenArray);
 
 
 struct OfferEncoder : torch::nn::Module {
@@ -78,7 +83,7 @@ struct PurchaseNet : torch::nn::Module {
 		torch::Tensor budget,
 		torch::Tensor inventory
 	);
-	
+
 	torch::nn::Linear flatten = nullptr;
 	torch::nn::Linear flatForward1 = nullptr;
 	torch::nn::Linear flatForward2 = nullptr;
@@ -87,24 +92,30 @@ struct PurchaseNet : torch::nn::Module {
 };
 
 
-class DecisionMaker {
+class NeuralDecisionMaker {
 	// a wrapper for various decision nets
 public:
-	DecisionMaker(Economy* economy);
-private:
+	NeuralDecisionMaker(
+		Economy* economy,
+		std::shared_ptr<OfferEncoder> offerEncoder
+	) : economy(economy), offerEncoder(offerEncoder) {
+		update_encodedOffers();
+	};
+// private:
 	Economy* economy;
 	std::shared_ptr<OfferEncoder> offerEncoder;
 	std::shared_ptr<PurchaseNet> purchaseNet;
 
 	torch::Tensor encodedOffers;
+	std::vector<std::shared_ptr<const Offer>> offers;
 
 	void update_encodedOffers() {
-		auto allOffers = economy->get_market();
-		unsigned int numOffers = allOffers.size();
+		offers = economy->get_market();
+		unsigned int numOffers = offers.size();
 
-		torch:Tensor offerers = torch::zeros(
-			// NOTE: if the simulation is going to add more agents later,
-			// then the size of this should be set to MORE than totalAgents
+		// NOTE: if the simulation is going to add more agents later,
+		// then the size of this should be set to MORE than totalAgents
+		torch::Tensor offerers = torch::zeros(
 			{numOffers, economy->get_totalAgents()}
 		);
 		torch::Tensor goods = torch::empty(
@@ -113,13 +124,22 @@ private:
 		torch::Tensor prices = torch::empty({numOffers, 1});
 
 		for (int i = 0; i < numOffers; i++) {
-			auto offer = allOffers[i];
+			auto offer = offers[i];
 			// set offerer
-			offerers[i][economy->get_id_for_agent(offer->offerer)];
+			offerers[i][economy->get_id_for_agent(offer->offerer)] = 1;
 			// set goods
-			// goods[i] = todo, todo
+			goods[i] = eigenToTorch(offer->quantities).squeeze(-1);
+			// set prices
+			prices[i] = offer->price;
 		}
+		torch::Tensor inputFeatures = torch::cat({goods, prices, offerers}, 1);
+
+		encodedOffers = offerEncoder->forward(inputFeatures);
 	}
+
+	// void get_purchase_proba(unsigned int offerIndex) {
+	//
+	// }
 
 };
 
