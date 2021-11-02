@@ -44,10 +44,8 @@ double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
 }
 
 void UtilMaxer::buy_goods() {
-    print_status(this, "buying goods...");
     std::vector<Order<Offer>> orders = decisionMaker->choose_goods();
     for (auto order : orders) {
-        print(order.amount);
         for (unsigned int i = 0; i < order.amount; i++) {
             respond_to_offer(order.offer);
             // TODO: Handle cases where response is rejected
@@ -57,7 +55,6 @@ void UtilMaxer::buy_goods() {
 
 
 void UtilMaxer::search_for_jobs() {
-    print_status(this, "searching for jobs...");
     std::vector<Order<JobOffer>> orders = decisionMaker->choose_jobs();
     for (auto order : orders) {
         for (unsigned int i = 0; i < order.amount; i++) {
@@ -69,8 +66,8 @@ void UtilMaxer::search_for_jobs() {
 
 
 void UtilMaxer::consume_goods() {
-    print_status(this, "consuming goods...");
     // just consumes all goods
+    std::lock_guard<std::mutex> lock(myMutex);
     inventory -= decisionMaker->choose_goods_to_consume();
 }
 
@@ -89,7 +86,7 @@ struct GoodChooser {
         numOffers(numOffers),
         budgetLeft(money),
         numTaken(Eigen::ArrayXi::Zero(numOffers)),
-        quantities(Eigen::ArrayXd::Zero(numGoods))
+        quantities(Eigen::ArrayXd::Constant(numGoods, constants::eps))
     {}
 
     std::shared_ptr<UtilMaxer> parent;
@@ -102,7 +99,7 @@ struct GoodChooser {
 
     int find_best_offer() {
         double base_u = parent->u(quantities);
-        double best_util_per_cost = -constants::eps;
+        double best_util_per_cost = 0.0;
         int bestIdx = -1;
         for (int i = 0; i < numOffers; i++) {
             if ((offers[i]->amountLeft > numTaken(i)) && (offers[i]->price <= budgetLeft)) {
@@ -172,7 +169,6 @@ struct GoodChooser {
         std::vector<Order<Offer>> orders;
         for (unsigned int i = 0; i < numOffers; i++) {
             if (numTaken(i) > 0) {
-                std::cout << offers[i]->quantities.transpose() << ' ' << numTaken(i) << '\n';
                 orders.push_back(Order<Offer>(offers[i], numTaken(i)));
             }
         }
@@ -249,6 +245,7 @@ std::vector<Order<Offer>> BasicPersonDecisionMaker::choose_goods() {
     // the algorithm used here gets only an approximate solution in most cases
 
     const auto availOffers = filter_available<Offer>(
+        parent,
         parent->get_economy()->get_market(),
         parent->get_economy()->get_rng()
     );
@@ -264,6 +261,7 @@ std::vector<Order<Offer>> BasicPersonDecisionMaker::choose_goods() {
 
 std::vector<Order<JobOffer>> BasicPersonDecisionMaker::choose_jobs() {
     const auto availOffers = filter_available<JobOffer>(
+        parent,
         parent->get_economy()->get_jobMarket(),
         parent->get_economy()->get_rng()
     );

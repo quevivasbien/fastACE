@@ -22,8 +22,11 @@ bool Person::time_step() {
     }
     else {
         laborSupplied = 0.0;
+        print_status(this, "Searching for job...");
         search_for_jobs();
+        print_status(this, "Buying goods...");
         buy_goods();
+        print_status(this, "Consuming goods...");
         consume_goods();
         return true;
     }
@@ -32,12 +35,14 @@ bool Person::time_step() {
 
 bool Person::respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
     // check that the person actually has enough labor remaining, then send to offerer
-    if (labor + jobOffer->labor <= 1) {
+    if (laborSupplied + jobOffer->labor <= 1) {
+        print_status(this, "Asking for jobOffer acceptance...");
         bool accepted = std::static_pointer_cast<Firm>(jobOffer->offerer)->review_jobOffer_response(
             std::static_pointer_cast<Person>(shared_from_this()), jobOffer
         );
         if (accepted) {
-            labor += jobOffer->labor;
+            std::lock_guard<std::mutex> lock(myMutex);
+            laborSupplied += jobOffer->labor;
             money += jobOffer->wage;
             return true;
         }
