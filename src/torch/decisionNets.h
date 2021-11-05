@@ -2,15 +2,7 @@
 #define DECISION_NETS_H
 
 #include <torch/torch.h>
-#include <vector>
-#include <string>
 #include <memory>
-#include <Eigen/Dense>
-#include "base.h"
-
-
-// converts an Eigen::ArrayXd to a torch::Tensor
-torch::Tensor eigenToTorch(Eigen::ArrayXd eigenArray);
 
 
 struct OfferEncoder : torch::nn::Module {
@@ -23,6 +15,7 @@ struct OfferEncoder : torch::nn::Module {
 	stackSize is the number of offers to be processed at the same time (number to be compared simultaneously by a given agent)
 	numFeatures is the number of features for each offer
 		typically will have size numAgents (who is offering?) + numGoods (what goods are offered?) + 1 (price)
+		for encoding JobOffers, will have size numAgents + 2 (offerer, labor, and wage)
 	intermediateSize is size of hidden layers
 	encodingSize is the size of the output (encoded) layer
 
@@ -41,7 +34,7 @@ struct OfferEncoder : torch::nn::Module {
 	torch::nn::Linear dimReduce = nullptr;
 	torch::nn::Linear stackedForward1 = nullptr;
 	torch::nn::Linear stackedForward2 = nullptr;
-	torch::nn::Linear final = nullptr;
+	torch::nn::Linear last = nullptr;
 
 	int stackSize;
 	int encodingSize;
@@ -61,13 +54,11 @@ struct PurchaseNet : torch::nn::Module {
 	offerEncodingSize is the encodingSize of the OfferEncoding this net get's its offer data from
 	stackSize is the number of offers to be processed at the same time (number to be compared simultaneously by a given agent)
 	numUtilParams is the number of parameters of the agents' utility functions to be included
+	* Note this can also be used for firms' purchasing decisions, in which case,
+		numUtilParams in the number of parameters of the firms' production function
+	* Note can also be generalized to jobOffer acceptance decisions
 	numGoods is the number of goods in the simulation
 	flatSize is the size of the net's hidden layers
-
-	input shape is [batch size] x stackSize x offerEncodingSize
-	output shape is [batch size] x stackSize
-
-	Output is interpreted as the probability that the agent takes each offer in the stack if that offer is affordable
 	*/
 	PurchaseNet(
 		int offerEncodingSize,
@@ -78,69 +69,27 @@ struct PurchaseNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor budget,
-		torch::Tensor inventory
+		// offerEncodings should be [batch size] x stackSize x offerEncodingSize
+		// utilParams should be [batch size] x numUtilParams
+		// budget should be [batch size] x 1
+		// inventory should be [batch size] x numGoods
+		// Output is interpreted as the probability that the agent takes each offer in the stack
+			// if that offer is affordable
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& budget,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
 	torch::nn::Linear flatForward1 = nullptr;
 	torch::nn::Linear flatForward2 = nullptr;
 	torch::nn::Linear flatForward3 = nullptr;
-	torch::nn::Linear final = nullptr;
-};
+	torch::nn::Linear last = nullptr;
 
-
-class NeuralDecisionMaker {
-	// a wrapper for various decision nets
-public:
-	NeuralDecisionMaker(
-		Economy* economy,
-		std::shared_ptr<OfferEncoder> offerEncoder
-	) : economy(economy), offerEncoder(offerEncoder) {
-		update_encodedOffers();
-	};
-// private:
-	Economy* economy;
-	std::shared_ptr<OfferEncoder> offerEncoder;
-	std::shared_ptr<PurchaseNet> purchaseNet;
-
-	torch::Tensor encodedOffers;
-	std::vector<std::shared_ptr<const Offer>> offers;
-
-	void update_encodedOffers() {
-		offers = economy->get_market();
-		unsigned int numOffers = offers.size();
-
-		// NOTE: if the simulation is going to add more agents later,
-		// then the size of this should be set to MORE than totalAgents
-		torch::Tensor offerers = torch::zeros(
-			{numOffers, economy->get_totalAgents()}
-		);
-		torch::Tensor goods = torch::empty(
-			{numOffers, economy->get_numGoods()}
-		);
-		torch::Tensor prices = torch::empty({numOffers, 1});
-
-		for (int i = 0; i < numOffers; i++) {
-			auto offer = offers[i];
-			// set offerer
-			offerers[i][economy->get_id_for_agent(offer->offerer)] = 1;
-			// set goods
-			goods[i] = eigenToTorch(offer->quantities).squeeze(-1);
-			// set prices
-			prices[i] = offer->price;
-		}
-		torch::Tensor inputFeatures = torch::cat({goods, prices, offerers}, 1);
-
-		encodedOffers = offerEncoder->forward(inputFeatures);
-	}
-
-	// void get_purchase_proba(unsigned int offerIndex) {
-	//
-	// }
-
+	int stackSize;
+	int numUtilParams;
 };
 
 

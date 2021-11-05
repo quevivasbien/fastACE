@@ -1,34 +1,68 @@
 #include "neuralPersonDecisionMaker.h"
 
-struct PersonDecisionMaker {
-    // called by UtilMaxer::buy_goods()
-    // looks at current goods on market and chooses bundle that maximizes utility
-    // subject to restriction that total price is within budget
-    virtual std::vector<Order<Offer>> choose_goods() = 0;
-    // analogous to GoodChooser::choose_goods(), but for jobs
-    // in default implementation does not take utility of labor into account
-    // i.e. only tries to maximize wages
-    virtual std::vector<Order<JobOffer>> choose_jobs() = 0;
-    // Selects which goods in inventory should be consumed
-    virtual Eigen::ArrayXd choose_goods_to_consume() = 0;
 
-    PersonDecisionMaker(std::shared_ptr<UtilMaxer> parent);
-    std::shared_ptr<UtilMaxer> parent;
-};
+NeuralPersonDecisionMaker::NeuralPersonDecisionMaker(
+    std::shared_ptr<UtilMaxer> parent,
+    std::shared_ptr<NeuralDecisionMaker> guide
+) : parent(parent), guide(guide) {}
+
+NeuralPersonDecisionMaker::NeuralPersonDecisionMaker() : parent(nullptr), guide(nullptr) {}
 
 
-struct NeuralPersonDecisionMaker : public PersonDecisionMaker {
-	NeuralPersonDecisionMaker();
-    NeuralPersonDecisionMaker(
-    	std::shared_ptr<UtilMaxer> parent,
-    	std::shared_ptr<torch::nn::Module> goodChooserNet;
-    	std::shared_ptr<torch::nn::Module> jobChooserNet;
-    	std::shared_ptr<torch::nn::Module> consumptionChooserNet;
-	);
+void NeuralPersonDecisionMaker::check_guide_is_current() {
+    if (parent->get_time() > guide->time) {
+        guide->time_step();
+    }
+}
 
-	virtual std::vector<Order<Offer>> choose_goods() override;
+Eigen::ArrayXd get_utilParams() {
+    // NOTE: This only works if the parent has a CES utility function
+    auto utilFunc = std::static_pointer_cast<CES>(parent->get_utilFunc());
+    Eigen::ArrayXd utilParams(utilFunc->get_numInputs() + 2);
+    utilParams << utilFunc->tfp, utilFunc->shareParams, utilFunc->substitutionParam;
+    return utilParams;
+}
 
-	virtual std::vector<Order<JobOffer>> choose_jobs() override;
 
-	virtual Eigen::ArrayXd choose_goods_to_consume() override;
+std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
+    check_guide_is_current();
+
+    // randomly select offers from encoded offers in guide->encodedOffers
+    auto offerIndices = torch::randint(
+        guide->purchaseNet->stackSize, guide->numEncodedOffers, torch::dtype(torch::kInt)
+    );
+
+    // get & return offer requests
+    return guide->get_offers_to_request(
+        offerIndices,
+        get_utilParams(),
+        parent->get_money(),
+        parent->get_laborSupplied(),
+        parent->get_inventory()
+    );
+}
+
+
+std::vector<Order<JobOffer>> NeuralPersonDecisionMaker::choose_jobs() {
+    check_guide_is_current();
+
+    // randomly select job offers from guide->encodedJobOffers
+    auto offerIndices = torch::randint(
+        guide->laborSearchNet->stackSize, guide->numEncodedOffers, torch::dtype(torch::kInt)
+    );
+
+    // get & return offer requests
+    return guide->get_joboffers_to_request(
+        offerIndices,
+        get_utilParams(),
+        parent->get_money(),
+        parent->get_laborSupplied(),
+        parent->get_inventory()
+    );
+
+}
+
+
+Eigen::ArrayXd NeuralPersonDecisionMaker::choose_goods_to_consume() {
+    // do something...
 }

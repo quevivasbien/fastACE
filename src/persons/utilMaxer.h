@@ -40,6 +40,8 @@ public:
 
     double u(const Eigen::ArrayXd& quantities);  // alias for utilFunc.f
 
+    std::shared_ptr<const VecToScalar> get_utilFunc() const;
+
     virtual std::string get_typename() const override;
 
 protected:

@@ -17,11 +17,6 @@ double min(const Vec& values, unsigned int length, unsigned int* startIdx) {
     return out;
 }
 
-
-unsigned int VecToScalar::get_numInputs() const {
-    return numInputs;
-}
-
 void VecToScalar::check_no_length_change(const Vec& candidate) const {
     assert(candidate.size() == numInputs);
 }
@@ -39,11 +34,6 @@ double Linear::df(const Vec& quantities, unsigned int idx) const {
     return productivities(idx);
 }
 
-void Linear::set_productivities(const Vec& newProductivities) {
-    check_no_length_change(newProductivities);
-    productivities = newProductivities;
-}
-
 
 CobbDouglas::CobbDouglas(
     unsigned int numInputs
@@ -59,25 +49,10 @@ double CobbDouglas::df(const Vec& quantities, unsigned int idx) const {
     return f(quantities) * elasticities(idx) / quantities(idx);
 }
 
-void CobbDouglas::set_tfp(double new_tfp) {
-    tfp = new_tfp;
-}
-
-void CobbDouglas::set_elasticities(const Vec& newElasticities) {
-    check_no_length_change(newElasticities);
-    elasticities = newElasticities;
-}
-
 
 CobbDouglasCRS::CobbDouglasCRS(double tfp, const Vec& elasticities) : CobbDouglas(tfp, elasticities) {
     this->elasticities /= elasticities.sum();
 }
-
-void CobbDouglasCRS::set_elasticities(const Vec& newElasticities) {
-    check_no_length_change(newElasticities);
-    elasticities = newElasticities / newElasticities.sum();
-}
-
 
 
 
@@ -85,11 +60,6 @@ StoneGeary::StoneGeary(
     double tfp, const Vec& elasticities, const Vec& thresholdParams
 ) : CobbDouglas(tfp, elasticities), thresholdParams(thresholdParams) {
     assert(thresholdParams.size() == numInputs);
-}
-
-void StoneGeary::set_thresholdParams(const Vec& newThresholdParams) {
-    check_no_length_change(newThresholdParams);
-    thresholdParams = newThresholdParams;
 }
 
 
@@ -128,11 +98,6 @@ double Leontief::df(const Vec& quantities, unsigned int idx) const {
     }
 }
 
-void Leontief::set_productivities(const Vec& newProductivities) {
-    check_no_length_change(newProductivities);
-    productivities = newProductivities;
-}
-
 
 
 
@@ -155,23 +120,13 @@ double CES::df(const Vec& quantities, unsigned int idx) const {
 }
 
 
-void CES::set_shareParams(const Vec& newShareParams) {
-    check_no_length_change(newShareParams);
-    shareParams = newShareParams;
-}
-
-void CES::set_substitutionParam(double newElasticityOfSubstitution) {
-    substitutionParam = 1 / (1 - newElasticityOfSubstitution);
-}
-
-
 
 
 ProfitFunc::ProfitFunc(
     double price, const Vec& factorPrices, std::shared_ptr<VecToScalar> prodFunc
 ) : VecToScalar(factorPrices.size()), price(price), prodFunc(prodFunc), costFunc(Linear(factorPrices)) {
     //costFunc = Linear(factorPrices);
-    assert(numInputs == this->prodFunc->get_numInputs());
+    assert(numInputs == this->prodFunc->numInputs);
 }
 
 double ProfitFunc::f(const Vec& quantities) const {
@@ -180,18 +135,4 @@ double ProfitFunc::f(const Vec& quantities) const {
 
 double ProfitFunc::df(const Vec& quantities, unsigned int idx) const {
     return price * prodFunc->df(quantities, idx) - costFunc.df(quantities, idx);
-}
-
-void ProfitFunc::set_price(double newPrice) {
-    price = newPrice;
-}
-
-void ProfitFunc::set_factorPrices(const Vec& newFactorPrices) {
-    check_no_length_change(newFactorPrices);
-    costFunc.set_productivities(newFactorPrices);
-}
-
-void ProfitFunc::set_prodFunc(std::shared_ptr<VecToScalar> newProdFunc) {
-    assert(newProdFunc->get_numInputs() == numInputs);
-    prodFunc = newProdFunc;
 }
