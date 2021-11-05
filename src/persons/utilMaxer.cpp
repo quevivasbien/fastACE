@@ -35,7 +35,7 @@ void UtilMaxer::init_decisionMaker() {
     decisionMaker->parent = std::static_pointer_cast<UtilMaxer>(shared_from_this());
 }
 
-std::shared_ptr<const VecToScalar> get_utilFunc() {
+std::shared_ptr<const VecToScalar> UtilMaxer::get_utilFunc() const {
     return utilFunc;
 }
 

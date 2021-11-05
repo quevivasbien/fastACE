@@ -28,7 +28,7 @@ ProfitMaxer::ProfitMaxer(
     prodFunc(prodFunc),
     decisionMaker(decisionMaker)
 {
-    assert(prodFunc->get_numInputs() == economy->get_numGoods() + 1);
+    assert(prodFunc->numInputs == economy->get_numGoods() + 1);
 }
 
 ProfitMaxer::ProfitMaxer(
@@ -42,7 +42,7 @@ ProfitMaxer::ProfitMaxer(
     prodFunc(prodFunc),
     decisionMaker(decisionMaker)
 {
-    assert(prodFunc->get_numInputs() == economy->get_numGoods() + 1);
+    assert(prodFunc->numInputs == economy->get_numGoods() + 1);
 }
 
 void ProfitMaxer::init_decisionMaker() {
@@ -57,7 +57,7 @@ std::string ProfitMaxer::get_typename() const {
 
 
 Eigen::ArrayXd ProfitMaxer::f(double labor, const Eigen::ArrayXd& quantities) {
-    Eigen::ArrayXd inputs(prodFunc->get_numInputs());
+    Eigen::ArrayXd inputs(prodFunc->numInputs);
     inputs << labor, quantities;
     return prodFunc->f(inputs);
 }

@@ -15,7 +15,7 @@ void NeuralPersonDecisionMaker::check_guide_is_current() {
     }
 }
 
-Eigen::ArrayXd get_utilParams() {
+Eigen::ArrayXd get_utilParams() const {
     // NOTE: This only works if the parent has a CES utility function
     auto utilFunc = std::static_pointer_cast<CES>(parent->get_utilFunc());
     Eigen::ArrayXd utilParams(utilFunc->get_numInputs() + 2);

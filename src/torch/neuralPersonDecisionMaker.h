@@ -19,6 +19,9 @@ struct NeuralPersonDecisionMaker : public PersonDecisionMaker {
 	virtual Eigen::ArrayXd choose_goods_to_consume() override;
 
 	void check_guide_is_current();
+	Eigen::ArrayXd get_utilParams() const;
+
+	std::shared_ptr<NeuralDecisionMaker> guide;
 };
 
 #endif

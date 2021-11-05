@@ -1,20 +1,11 @@
 #include "vecToVec.h"
 
 
-unsigned int VecToVec::get_numInputs() const {
-    return numInputs;
-}
-
-unsigned int VecToVec::get_numOutputs() const {
-    return numOutputs;
-}
-
-
 VToVFromVToS::VToVFromVToS(
     std::shared_ptr<VecToScalar> vecToScalar,
     unsigned int numOutputs,
     unsigned int outputIndex
-) : vecToScalar(vecToScalar), VecToVec(vecToScalar->get_numInputs(), numOutputs), outputIndex(outputIndex) {}
+) : vecToScalar(vecToScalar), VecToVec(vecToScalar->numInputs, numOutputs), outputIndex(outputIndex) {}
 
 VToVFromVToS::VToVFromVToS(
     std::shared_ptr<VecToScalar> vecToScalar
@@ -40,11 +31,11 @@ SumOfVecToVec::SumOfVecToVec(
     std::vector<std::shared_ptr<VecToVec>> innerFunctions
 ) : innerFunctions(innerFunctions),
     numInnerFunctions(innerFunctions.size()),
-    VecToVec(innerFunctions[0]->get_numInputs(), innerFunctions[0]->get_numOutputs())
+    VecToVec(innerFunctions[0]->numInputs, innerFunctions[0]->numOutputs)
 {
     for (unsigned int i = 1; i < numInnerFunctions; i++) {
-        assert((innerFunctions[i]->get_numInputs() == numInputs)
-                && (innerFunctions[i]->get_numOutputs() == numOutputs));
+        assert((innerFunctions[i]->numInputs == numInputs)
+                && (innerFunctions[i]->numOutputs == numOutputs));
     }
 }
 
