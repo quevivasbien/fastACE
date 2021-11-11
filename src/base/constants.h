@@ -10,7 +10,8 @@ namespace constants {
     const double laborIncrement = 0.25;
     const unsigned int heat = 5;
     const double eps = 0.0001;
-    const bool multithreaded = true;
+    const bool multithreaded = false;
+    const unsigned int maxAgents = 100;
 }
 
 #endif

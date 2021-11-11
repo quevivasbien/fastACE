@@ -1,5 +1,5 @@
-#ifndef VECTOSCALAR_H
-#define VECTOSCALAR_H
+#ifndef VEC_TO_SCALAR_H
+#define VEC_TO_SCALAR_H
 
 #include <memory>
 #include <Eigen/Dense>

@@ -2,15 +2,12 @@
 #define NEURAL_PERSON_DECISION_MAKER_H
 
 #include "utilMaxer.h"
-#include "neuralDecisionMaker.h"
+#include "decisionNetHandler.h"
 
+namespace neural {
 
-struct NeuralPersonDecisionMaker : public PersonDecisionMaker {
-	NeuralPersonDecisionMaker();
-    NeuralPersonDecisionMaker(
-    	std::shared_ptr<UtilMaxer> parent,
-    	std::shared_ptr<NeuralDecisionMaker> guide
-	);
+struct NeuralPersonDecisionMaker : PersonDecisionMaker {
+	NeuralPersonDecisionMaker(std::shared_ptr<DecisionNetHandler> guide);
 
 	virtual std::vector<Order<Offer>> choose_goods() override;
 
@@ -21,7 +18,15 @@ struct NeuralPersonDecisionMaker : public PersonDecisionMaker {
 	void check_guide_is_current();
 	Eigen::ArrayXd get_utilParams() const;
 
-	std::shared_ptr<NeuralDecisionMaker> guide;
+	std::shared_ptr<DecisionNetHandler> guide;
+
+protected:
+	NeuralPersonDecisionMaker(
+    	std::shared_ptr<UtilMaxer> parent,
+    	std::shared_ptr<DecisionNetHandler> guide
+	);
 };
+
+} // namespace neural
 
 #endif

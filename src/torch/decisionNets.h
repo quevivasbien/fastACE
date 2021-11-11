@@ -4,6 +4,8 @@
 #include <torch/torch.h>
 #include <memory>
 
+namespace neural {
+
 
 struct OfferEncoder : torch::nn::Module {
 	/**
@@ -54,9 +56,9 @@ struct PurchaseNet : torch::nn::Module {
 	offerEncodingSize is the encodingSize of the OfferEncoding this net get's its offer data from
 	stackSize is the number of offers to be processed at the same time (number to be compared simultaneously by a given agent)
 	numUtilParams is the number of parameters of the agents' utility functions to be included
-	* Note this can also be used for firms' purchasing decisions, in which case,
+	* NOTE this can also be used for firms' purchasing decisions, in which case,
 		numUtilParams in the number of parameters of the firms' production function
-	* Note can also be generalized to jobOffer acceptance decisions
+	* NOTE can also be generalized to jobOffer acceptance decisions
 	numGoods is the number of goods in the simulation
 	flatSize is the size of the net's hidden layers
 	*/
@@ -92,5 +94,33 @@ struct PurchaseNet : torch::nn::Module {
 	int numUtilParams;
 };
 
+
+struct ConsumptionNet : torch::nn::Module {
+	/**
+	This net takes as an input the current inventory, money, and labor of an agent,
+	as well as agent's utilParams, and returns the proportion of each good to consume.
+	*/
+	ConsumptionNet(
+		int numUtilParams,
+		int numGoods,
+		int hiddenSize
+	);
+
+	torch::Tensor forward(
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
+	);
+
+	torch::nn::Linear first = nullptr;
+	torch::nn::Linear hidden1 = nullptr;
+	torch::nn::Linear hidden2 = nullptr;
+	torch::nn::Linear last = nullptr;
+
+	int numUtilParams;
+};
+
+} // namespace neural
 
 #endif

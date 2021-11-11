@@ -1,5 +1,6 @@
 #include "decisionNets.h"
 
+namespace neural {
 
 OfferEncoder::OfferEncoder(
 	int stackSize,
@@ -60,3 +61,30 @@ torch::Tensor PurchaseNet::forward(
 	// lastly, output 1d sigmoid
 	return torch::sigmoid(last->forward(x));
 }
+
+
+ConsumptionNet::ConsumptionNet(
+    int numUtilParams,
+    int numGoods,
+    int hiddenSize
+) : numUtilParams(numUtilParams) {
+    first = torch::nn::Linear(numUtilParams + numGoods + 2, hiddenSize);
+    hidden1 = torch::nn::Linear(hiddenSize, hiddenSize);
+    hidden2 = torch::nn::Linear(hiddenSize, hiddenSize);
+    last = torch::nn::Linear(hiddenSize, numGoods);
+}
+
+torch::Tensor ConsumptionNet::forward(
+    const torch::Tensor& utilParams,
+    const torch::Tensor& money,
+    const torch::Tensor& labor,
+    const torch::Tensor& inventory
+) {
+    torch::Tensor x = torch::cat({utilParams, money, labor, inventory}, -1);
+    x = torch::relu(first->forward(x));
+    x = x + torch::relu(hidden1->forward(x));
+    x = x + torch::relu(hidden2->forward(x));
+    return torch::sigmoid(last->forward(x));
+}
+
+} // namespace neural

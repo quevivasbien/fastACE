@@ -14,6 +14,10 @@ void Economy::add_agent(std::shared_ptr<Agent> agent) {
     agents.push_back(agent);
 
     agentMap[agent] = totalAgents++;
+
+    if (totalAgents >= maxAgents) {
+        std::cout << "WARNING: You've hit the maximum number of agents allowed for this economy!" << std::endl;
+    }
 }
 
 std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
@@ -54,6 +58,10 @@ unsigned int Economy::get_id_for_agent(std::shared_ptr<Agent> agent) {
 
 unsigned int Economy::get_totalAgents() const {
     return totalAgents;
+}
+
+unsigned int Economy::get_maxAgents() const {
+    return maxAgents;
 }
 
 

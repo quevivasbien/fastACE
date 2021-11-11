@@ -106,6 +106,7 @@ public:
 
     unsigned int get_id_for_agent(std::shared_ptr<Agent> agent);
     unsigned int get_totalAgents() const;
+    unsigned int get_maxAgents() const;
 
     virtual void print_summary() const;
 
@@ -123,6 +124,7 @@ protected:
 
     std::unordered_map<std::shared_ptr<Agent>, unsigned int> agentMap;
     unsigned int totalAgents = 0;
+    unsigned int maxAgents = constants::maxAgents;
 
     std::mutex mutex;
 
