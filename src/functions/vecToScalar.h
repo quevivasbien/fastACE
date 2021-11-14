@@ -74,6 +74,9 @@ struct Leontief : VecToScalar {
 
 struct CES : VecToScalar {
     // Constant elasticity of substitution
+    // elast = 1 -> CobbDouglas
+    // elast = infty -> Linear
+    // elast = 0 -> Leontief
     CES(double tfp, const Vec& shareParams, double elasticityOfSubstitution);
     virtual double f(const Vec& quantities) const;
     virtual double df(const Vec& quantities, unsigned int idx) const;

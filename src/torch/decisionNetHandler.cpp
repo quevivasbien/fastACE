@@ -1,5 +1,7 @@
 #include "decisionNetHandler.h"
 
+// TODO: include the number of currently available offers as a parameter
+
 namespace neural {
 
 const int DEFAULT_STACK_SIZE = 10;
@@ -27,7 +29,7 @@ Eigen::ArrayXd torchToEigen(torch::Tensor tensor) {
 
 
 torch::Tensor get_purchase_probas(
-    const torch::Tensor& offerIndices, // dtype = kInt
+    const torch::Tensor& offerIndices, // dtype = kInt64
     const Eigen::ArrayXd& utilParams,
     double budget,
     double labor,
@@ -50,7 +52,7 @@ torch::Tensor get_purchase_probas(
 
 
 torch::Tensor get_job_probas(
-    const torch::Tensor& offerIndices, // dtype = kInt
+    const torch::Tensor& offerIndices, // dtype = kInt64
     const Eigen::ArrayXd& utilParams,
     double money,
     double labor,
@@ -74,27 +76,33 @@ torch::Tensor get_job_probas(
 
 
 DecisionNetHandler::DecisionNetHandler(
-    Economy* economy,
+    NeuralEconomy* economy,
     std::shared_ptr<OfferEncoder> offerEncoder,
     std::shared_ptr<OfferEncoder> jobOfferEncoder,
     std::shared_ptr<PurchaseNet> purchaseNet,
     std::shared_ptr<PurchaseNet> firmPurchaseNet,
     std::shared_ptr<PurchaseNet> laborSearchNet,
-    std::shared_ptr<ConsumptionNet> consumptionNet
+    std::shared_ptr<ConsumptionNet> consumptionNet,
+    std::shared_ptr<ConsumptionNet> productionNet,
+    std::shared_ptr<OfferNet> offerNet,
+    std::shared_ptr<JobOfferNet> jobOfferNet
 ) : economy(economy),
     offerEncoder(offerEncoder),
     jobOfferEncoder(jobOfferEncoder),
     purchaseNet(purchaseNet),
     firmPurchaseNet(firmPurchaseNet),
     laborSearchNet(laborSearchNet),
-    consumptionNet(consumptionNet)
+    consumptionNet(consumptionNet),
+    productionNet(productionNet),
+    offerNet(offerNet),
+    jobOfferNet(jobOfferNet)
 {
     update_encodedOffers();
     update_encodedJobOffers();
 };
 
 
-DecisionNetHandler::DecisionNetHandler(Economy* economy) : economy(economy) {
+DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy) {
     int numAgents = economy->get_maxAgents();
     int numGoods = economy->get_numGoods();
     // NOTE: numUtilParams assumes persons have CES utility functions,
@@ -136,6 +144,25 @@ DecisionNetHandler::DecisionNetHandler(Economy* economy) : economy(economy) {
         DEFAULT_HIDDEN_SIZE
     );
     consumptionNet = std::make_shared<ConsumptionNet>(
+        numUtilParams,
+        numGoods,
+        DEFAULT_HIDDEN_SIZE
+    );
+    productionNet = std::make_shared<ConsumptionNet>(
+        numUtilParams,
+        numGoods,
+        DEFAULT_HIDDEN_SIZE
+    );
+    offerNet = std::make_shared<OfferNet>(
+        DEFAULT_ENCODING_SIZE,
+        DEFAULT_STACK_SIZE,
+        numUtilParams,
+        numGoods,
+        DEFAULT_HIDDEN_SIZE
+    );
+    jobOfferNet = std::make_shared<JobOfferNet>(
+        DEFAULT_ENCODING_SIZE,
+        DEFAULT_STACK_SIZE,
         numUtilParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
@@ -199,6 +226,7 @@ void DecisionNetHandler::update_encodedJobOffers() {
 
 
 void DecisionNetHandler::time_step() {
+    std::lock_guard<std::mutex> lock(myMutex);
     update_encodedOffers();
     update_encodedJobOffers();
     time++;
@@ -206,7 +234,7 @@ void DecisionNetHandler::time_step() {
 
 
 std::vector<Order<Offer>> DecisionNetHandler::create_offer_requests(
-    const torch::Tensor& offerIndices, // dtype = kInt
+    const torch::Tensor& offerIndices, // dtype = kInt64
     torch::Tensor purchase_probas
 ) {
     auto to_purchase = (torch::rand(purchase_probas.sizes()) < purchase_probas);
@@ -223,12 +251,19 @@ std::vector<Order<Offer>> DecisionNetHandler::create_offer_requests(
 
 
 std::vector<Order<Offer>> DecisionNetHandler::get_offers_to_request(
-    const torch::Tensor& offerIndices, // dtype = kInt
     const Eigen::ArrayXd& utilParams,
     double budget,
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    if (numEncodedOffers == 0) {
+        // if no offers available, return empty list
+        return std::vector<Order<Offer>>();
+    }
+    // get random indices of offers to consider
+    auto offerIndices = torch::randint(
+        0, numEncodedOffers, purchaseNet->stackSize, torch::dtype(torch::kInt64)
+    );
     auto probas = get_purchase_probas(
         offerIndices, utilParams, budget, labor, inventory, purchaseNet, encodedOffers
     );
@@ -238,12 +273,19 @@ std::vector<Order<Offer>> DecisionNetHandler::get_offers_to_request(
 
 
 std::vector<Order<Offer>> DecisionNetHandler::firm_get_offers_to_request(
-    const torch::Tensor& offerIndices, // dtype = kInt
     const Eigen::ArrayXd& prodFuncParams,
     double budget,
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    if (numEncodedOffers == 0) {
+        // if no offers available, return empty list
+        return std::vector<Order<Offer>>();
+    }
+    // get random indices of offers to consider
+    auto offerIndices = torch::randint(
+        0, numEncodedOffers, firmPurchaseNet->stackSize, torch::dtype(torch::kInt64)
+    );
     auto probas = get_purchase_probas(
         offerIndices, prodFuncParams, budget, labor, inventory, firmPurchaseNet, encodedOffers
     );
@@ -253,7 +295,7 @@ std::vector<Order<Offer>> DecisionNetHandler::firm_get_offers_to_request(
 
 
 std::vector<Order<JobOffer>> DecisionNetHandler::create_joboffer_requests(
-    const torch::Tensor& offerIndices, // dtype = kInt
+    const torch::Tensor& offerIndices, // dtype = kInt64
     torch::Tensor job_probas
 ) {
     auto to_take = (torch::rand(job_probas.sizes()) < job_probas);
@@ -270,12 +312,19 @@ std::vector<Order<JobOffer>> DecisionNetHandler::create_joboffer_requests(
 
 
 std::vector<Order<JobOffer>> DecisionNetHandler::get_joboffers_to_request(
-    const torch::Tensor& offerIndices, // dtype = kInt
     const Eigen::ArrayXd& utilParams,
     double money,
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    if (numEncodedJobOffers == 0) {
+        // if no offers available, return empty list
+        return std::vector<Order<JobOffer>>();
+    }
+    // get random indices of offers to consider
+    auto offerIndices = torch::randint(
+        0, numEncodedJobOffers, laborSearchNet->stackSize, torch::dtype(torch::kInt64)
+    );
     auto probas = get_job_probas(
         offerIndices, utilParams, money, labor, inventory, laborSearchNet, encodedJobOffers
     );
@@ -297,6 +346,78 @@ Eigen::ArrayXd DecisionNetHandler::get_consumption_proportions(
     return torchToEigen(
         consumptionNet->forward(utilParams_, money_, labor_, inventory_)
     );
+}
+
+
+Eigen::ArrayXd DecisionNetHandler::get_production_proportions(
+    const Eigen::ArrayXd& prodFuncParams,
+    double money,
+    double labor,
+    const Eigen::ArrayXd& inventory
+) {
+    auto prodFuncParams_ = eigenToTorch(prodFuncParams);
+    auto money_ = torch::tensor({money});
+    auto labor_ = torch::tensor({labor});
+    auto inventory_ = eigenToTorch(inventory);
+    return torchToEigen(
+        productionNet->forward(prodFuncParams_, money_, labor_, inventory_)
+    );
+}
+
+
+torch::Tensor DecisionNetHandler::getEncodedOffersForOfferCreation() {
+    if (numEncodedJobOffers == 0) {
+        // return a tensor of zeros of the appropriate shape, meaning no offers currently on market
+        return torch::zeros({offerNet->stackSize, offerEncoder->encodingSize});
+    }
+    else {
+        auto offerIndices = torch::randint(
+            0, numEncodedOffers, offerNet->stackSize, torch::dtype(torch::kInt64)
+        );
+        return encodedOffers.index_select(0, offerIndices);
+    }
+}
+
+
+std::pair<Eigen::ArrayXd, Eigen::ArrayXd> DecisionNetHandler::choose_offers(
+    const Eigen::ArrayXd& prodFuncParams,
+    double money,
+    double labor,
+    const Eigen::ArrayXd& inventory
+) {
+    auto encodedOffers = getEncodedOffersForOfferCreation();
+    auto netOutput = offerNet->forward(
+        encodedOffers,
+        eigenToTorch(prodFuncParams),
+        torch::tensor({money}),
+        torch::tensor({labor}),
+        eigenToTorch(inventory)
+    );
+    auto amounts = torchToEigen(netOutput.index({torch::indexing::Slice(), 0})) * inventory;
+    auto prices = torchToEigen(netOutput.index({torch::indexing::Slice(), 1}));
+
+    return std::make_pair(amounts, prices);
+}
+
+
+std::pair<double, double> DecisionNetHandler::choose_job_offers(
+    const Eigen::ArrayXd& prodFuncParams,
+    double money,
+    double labor,
+    const Eigen::ArrayXd& inventory
+) {
+    auto encodedOffers = getEncodedOffersForOfferCreation();
+    auto netOutput = jobOfferNet->forward(
+        encodedOffers,
+        eigenToTorch(prodFuncParams),
+        torch::tensor({money}),
+        torch::tensor({labor}),
+        eigenToTorch(inventory)
+    );
+    double totalLabor = netOutput[0].item<double>();
+    double wage = netOutput[1].item<double>();
+
+    return std::make_pair(totalLabor, wage);
 }
 
 } // namespace neural

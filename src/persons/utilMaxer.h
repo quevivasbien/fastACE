@@ -38,7 +38,8 @@ public:
         return utilMaxer;
     }
 
-    double u(const Eigen::ArrayXd& quantities);  // alias for utilFunc.f
+    double u(double labor, const Eigen::ArrayXd& quantities);  // alias for utilFunc.f
+    double u(const Eigen::ArrayXd& quantities);  // implicitly inputs labor = laborSupplied
 
     std::shared_ptr<const VecToScalar> get_utilFunc() const;
 
@@ -60,6 +61,8 @@ protected:
     );
     void init_decisionMaker();
 
+    // utilFunc should be a VecToScalar with numInputs == economy->numGoods + 1
+    // the first input is assumed to be 1 - labor (i.e. leisure), rest of inputs are goods quantities
     std::shared_ptr<VecToScalar> utilFunc;
     std::shared_ptr<PersonDecisionMaker> decisionMaker;
 

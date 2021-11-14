@@ -30,19 +30,8 @@ Eigen::ArrayXd NeuralPersonDecisionMaker::get_utilParams() const {
 std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
     check_guide_is_current();
 
-    // randomly select offers from encoded offers in guide->encodedOffers
-    if (guide->numEncodedOffers == 0) {
-        // if no offers available, return empty list
-        std::vector<Order<Offer>> v;
-        return v;
-    }
-    auto offerIndices = torch::randint(
-        0, guide->numEncodedOffers, guide->purchaseNet->stackSize, torch::dtype(torch::kInt)
-    );
-
     // get & return offer requests
     return guide->get_offers_to_request(
-        offerIndices,
         get_utilParams(),
         parent->get_money(),
         parent->get_laborSupplied(),
@@ -54,19 +43,8 @@ std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
 std::vector<Order<JobOffer>> NeuralPersonDecisionMaker::choose_jobs() {
     check_guide_is_current();
 
-    // randomly select job offers from guide->encodedJobOffers
-    if (guide->numEncodedJobOffers == 0) {
-        // if no offers available, return empty list
-        std::vector<Order<JobOffer>> v;
-        return v;
-    }
-    auto offerIndices = torch::randint(
-        0, guide->numEncodedJobOffers, guide->laborSearchNet->stackSize, torch::dtype(torch::kInt)
-    );
-
     // get & return offer requests
     return guide->get_joboffers_to_request(
-        offerIndices,
         get_utilParams(),
         parent->get_money(),
         parent->get_laborSupplied(),

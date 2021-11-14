@@ -11,7 +11,6 @@ namespace constants {
     const unsigned int heat = 5;
     const double eps = 0.0001;
     const bool multithreaded = false;
-    const unsigned int maxAgents = 100;
 }
 
 #endif

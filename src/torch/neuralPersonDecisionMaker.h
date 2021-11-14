@@ -7,12 +7,11 @@
 namespace neural {
 
 struct NeuralPersonDecisionMaker : PersonDecisionMaker {
+
 	NeuralPersonDecisionMaker(std::shared_ptr<DecisionNetHandler> guide);
 
 	virtual std::vector<Order<Offer>> choose_goods() override;
-
 	virtual std::vector<Order<JobOffer>> choose_jobs() override;
-
 	virtual Eigen::ArrayXd choose_goods_to_consume() override;
 
 	void check_guide_is_current();

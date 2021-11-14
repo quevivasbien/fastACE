@@ -6,6 +6,11 @@
 
 namespace neural {
 
+void xavier_init(torch::nn::Module& module);
+
+// create_linear just creates new linear layer and applies xavier_init
+torch::nn::Linear create_linear(int in_features, int out_features);
+
 
 struct OfferEncoder : torch::nn::Module {
 	/**
@@ -67,7 +72,7 @@ struct PurchaseNet : torch::nn::Module {
 		int stackSize,
 		int numUtilParams,
 		int numGoods,
-		int flatSize
+		int hiddenSize
 	);
 
 	torch::Tensor forward(
@@ -97,8 +102,8 @@ struct PurchaseNet : torch::nn::Module {
 
 struct ConsumptionNet : torch::nn::Module {
 	/**
-	This net takes as an input the current inventory, money, and labor of an agent,
-	as well as agent's utilParams, and returns the proportion of each good to consume.
+	This net takes as an input utilParams and the current inventory, money, and labor of an agent,
+	and returns the proportion of each good to consume.
 	*/
 	ConsumptionNet(
 		int numUtilParams,
@@ -120,6 +125,75 @@ struct ConsumptionNet : torch::nn::Module {
 
 	int numUtilParams;
 };
+
+
+struct OfferNet : torch::nn::Module {
+	/**
+	This net takes as an inputs offerEncodings, utilParams and the current inventory, money, and labor of an agent,
+	and returns (1) proportion of each good to sell, and (2) per-good prices at which to sell
+
+	implementation looks very much like that of PurchaseNet; input should have the same form
+	output is a [batchSize] x numGoods x 2 tensor
+	*/
+	OfferNet(
+		int offerEncodingSize,
+		int stackSize,
+		int numUtilParams,
+		int numGoods,
+		int hiddenSize
+	);
+
+	torch::Tensor forward(
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
+	);
+
+	torch::nn::Linear flatten = nullptr;
+	torch::nn::Linear flatForward1 = nullptr;
+	torch::nn::Linear flatForward2 = nullptr;
+	torch::nn::Linear flatForward3a = nullptr;
+	torch::nn::Linear flatForward3b = nullptr;
+	torch::nn::Linear lasta = nullptr;
+	torch::nn::Linear lastb = nullptr;
+
+	int stackSize;
+	int numUtilParams;
+};
+
+
+struct JobOfferNet : torch::nn::Module {
+	/**
+	Similar to OfferNet, but returns only a 2d vector {labor, wage_per_labor}
+	*/
+	JobOfferNet(
+		int offerEncodingSize,
+		int stackSize,
+		int numUtilParams,
+		int numGoods,
+		int hiddenSize
+	);
+
+	torch::Tensor forward(
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
+	);
+
+	torch::nn::Linear flatten = nullptr;
+	torch::nn::Linear flatForward1 = nullptr;
+	torch::nn::Linear flatForward2 = nullptr;
+	torch::nn::Linear flatForward3 = nullptr;
+	torch::nn::Linear last = nullptr;
+
+	int stackSize;
+	int numUtilParams;
+};
+
 
 } // namespace neural
 

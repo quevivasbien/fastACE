@@ -12,12 +12,6 @@ void Economy::add_agent(std::shared_ptr<Agent> agent) {
     std::lock_guard<std::mutex> lock(mutex);
     assert(agent->get_economy() == this);
     agents.push_back(agent);
-
-    agentMap[agent] = totalAgents++;
-
-    if (totalAgents >= maxAgents) {
-        std::cout << "WARNING: You've hit the maximum number of agents allowed for this economy!" << std::endl;
-    }
 }
 
 std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
@@ -50,18 +44,6 @@ void Economy::add_offer(std::shared_ptr<const Offer> offer) {
 void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
     std::lock_guard<std::mutex> lock(mutex);
     jobMarket.push_back(jobOffer);
-}
-
-unsigned int Economy::get_id_for_agent(std::shared_ptr<Agent> agent) {
-    return agentMap[agent];
-}
-
-unsigned int Economy::get_totalAgents() const {
-    return totalAgents;
-}
-
-unsigned int Economy::get_maxAgents() const {
-    return maxAgents;
 }
 
 

@@ -20,22 +20,37 @@ struct VecToVec {
 };
 
 
+template <typename VToS>
 struct VToVFromVToS : VecToVec {
     // encloses a VecToScalar object but maintains functionality as a vec to vec
     // only returns a positive value in one of its output indices
     VToVFromVToS(
-        std::shared_ptr<VecToScalar> vecToScalar,
+        std::shared_ptr<VToS> vecToScalar,
         unsigned int numOutputs,
         unsigned int outputIndex
-    );
-    VToVFromVToS(
-        std::shared_ptr<VecToScalar> vecToScalar
-        // implicitly assumes numOutputs = 1 and outputIndex = 0
-    );
-    Vec f(const Vec& quantities) const override;
-    double df(const Vec& quantities, unsigned int i, unsigned int j) const override;
+    ) : vecToScalar(vecToScalar), VecToVec(vecToScalar->numInputs, numOutputs), outputIndex(outputIndex) {}
 
-    std::shared_ptr<VecToScalar> vecToScalar;
+    VToVFromVToS(
+        std::shared_ptr<VToS> vecToScalar
+        // implicitly assumes numOutputs = 1 and outputIndex = 0
+    ) : VToVFromVToS(vecToScalar, 1, 0) {}
+
+    Vec f(const Vec& quantities) const override {
+        Vec out = Eigen::ArrayXd::Zero(numOutputs);
+        out(outputIndex) = vecToScalar->f(quantities);
+        return out;
+    }
+
+    double df(const Vec& quantities, unsigned int i, unsigned int j) const override {
+        if (i == outputIndex) {
+            return vecToScalar->df(quantities, j);
+        }
+        else {
+            return 0.0;
+        }
+    }
+
+    std::shared_ptr<VToS> vecToScalar;
     unsigned int outputIndex;
 };
 
@@ -50,5 +65,14 @@ struct SumOfVecToVec : VecToVec {
     std::vector<std::shared_ptr<VecToVec>> innerFunctions;
     unsigned int numInnerFunctions;
 };
+
+
+// A convenient initializer for a SumOfVecToVecs made up of a CES production function for each output
+// Need to provide vectors of length equal to number of goods in economy
+std::shared_ptr<SumOfVecToVec> create_CES_VecToVec(
+    std::vector<double> tfps,
+    std::vector<Eigen::ArrayXd> shareParams,
+    std::vector<double> elasticitiesOfSubstitution
+);
 
 #endif

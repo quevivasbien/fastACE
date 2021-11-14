@@ -104,10 +104,6 @@ public:
     void add_offer(std::shared_ptr<const Offer> offer);
     void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
 
-    unsigned int get_id_for_agent(std::shared_ptr<Agent> agent);
-    unsigned int get_totalAgents() const;
-    unsigned int get_maxAgents() const;
-
     virtual void print_summary() const;
 
 protected:
@@ -121,10 +117,6 @@ protected:
     std::default_random_engine rng;
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
-
-    std::unordered_map<std::shared_ptr<Agent>, unsigned int> agentMap;
-    unsigned int totalAgents = 0;
-    unsigned int maxAgents = constants::maxAgents;
 
     std::mutex mutex;
 
@@ -237,9 +229,9 @@ public:
         return create<Firm>(std::forward<Args>(args) ...);
     }
 
-    virtual void search_for_laborers() {};  // currently does nothing
-    virtual void produce() {};  // currently does nothing
-    virtual void pay_dividends() {};  // currently does nothing
+    virtual void search_for_laborers() {}  // currently does nothing
+    virtual void produce() {}  // currently does nothing
+    virtual void pay_dividends() {}  // currently does nothing
 
     // analagous to Agent::review_offer_response
     virtual bool review_jobOffer_response(

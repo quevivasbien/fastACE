@@ -33,6 +33,8 @@ public:
     Eigen::ArrayXd f(double labor, const Eigen::ArrayXd& quantities);
     double get_revenue(double labor, const Eigen::ArrayXd& quantities, const Eigen::ArrayXd& prices);
 
+    std::shared_ptr<const VecToVec> get_prodFunc() const;
+
     virtual std::string get_typename() const override;
 
 protected:

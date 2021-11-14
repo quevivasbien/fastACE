@@ -6,7 +6,7 @@ PersonDecisionMaker::PersonDecisionMaker(std::shared_ptr<UtilMaxer> parent) : pa
 UtilMaxer::UtilMaxer(
     Economy* economy
 ) : Person(economy),
-    utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods())),
+    utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods() + 1)),
     decisionMaker(std::make_shared<BasicPersonDecisionMaker>())
 {}
 
@@ -43,8 +43,14 @@ std::string UtilMaxer::get_typename() const {
     return "UtilMaxer";
 }
 
+double UtilMaxer::u(double labor, const Eigen::ArrayXd& quantities) {
+    Eigen::ArrayXd inputs(utilFunc->numInputs);
+    inputs << 1 - labor, quantities;
+    return utilFunc->f(inputs);
+}
+
 double UtilMaxer::u(const Eigen::ArrayXd& quantities) {
-    return utilFunc->f(quantities);
+    return u(laborSupplied, quantities);
 }
 
 void UtilMaxer::buy_goods() {
