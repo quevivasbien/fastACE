@@ -47,16 +47,9 @@ int main() {
         std::make_shared<neural::NeuralFirmDecisionMaker>(dnh)
     );
 
-    economy.time_step();
-    economy.print_summary();
-
-    auto offerNet = std::make_shared<neural::OfferNet>(20, 5, 5, 2, 20);
-
-    auto offerEncodings = torch::rand({5, 20});
-    auto utilParams = torch::rand({5});
-    auto money = torch::rand({1});
-    auto labor = torch::rand({1});
-    auto inventory = torch::rand({2});
+    for (int t = 0; t < 10; t++) {
+        economy.time_step();
+    }
 
     return 0;
 }

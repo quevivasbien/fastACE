@@ -2,7 +2,7 @@
 #define CONSTANTS_H
 
 namespace constants {
-    const unsigned int verbose = 0;
+    const unsigned int verbose = 3;
     const double defaultPrice = 1.0;
     const double priceMultiplier = 1.1;
     const double defaultLaborBudget = 0.5;

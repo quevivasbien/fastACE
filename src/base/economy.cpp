@@ -107,6 +107,14 @@ bool Economy::time_step() {
     }
     flush<const Offer>(market);
     flush<const JobOffer>(jobMarket);
+    if (constants::verbose >= 2) {
+        print_summary();
+    }
+    if (constants::verbose >= 3) {
+        for (auto agent : agents) {
+            agent->print_summary();
+        }
+    }
     return true;
 }
 

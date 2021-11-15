@@ -27,12 +27,13 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::get_prodFuncParams() const {
     // NOTE: This only works if the parent has a SumOfVecToVec production function
     // with VToVFromVToS<CES> innerFunctions.
     auto prodFunc = std::static_pointer_cast<const SumOfVecToVec>(parent->get_prodFunc());
-    Eigen::ArrayXd prodFuncParams((prodFunc->numInputs + 2) * prodFunc->numInnerFunctions);
+    unsigned int componentSize = prodFunc->numInputs + 2;
+    Eigen::ArrayXXd prodFuncParams(componentSize, prodFunc->numInnerFunctions);
     for (unsigned int i = 0; i < prodFunc->numInnerFunctions; i++) {
         auto ces = std::static_pointer_cast<const VToVFromVToS<CES>>(prodFunc->innerFunctions[i])->vecToScalar;
-        prodFuncParams << ces->tfp, ces->shareParams, ces->substitutionParam;
+        prodFuncParams.col(i) << ces->tfp, ces->shareParams, ces->substitutionParam;
     }
-    return prodFuncParams;
+    return Eigen::Map<Eigen::ArrayXd>(prodFuncParams.data(), prodFuncParams.size());
 }
 
 

@@ -109,6 +109,7 @@ DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy
     // with goods + labor + tfp + elasticity as params
     // assumes firms have same number of params in their production functs
     int numUtilParams = numGoods + 3;
+    int numProdFuncParams = numUtilParams * numGoods;
 
     offerEncoder = std::make_shared<OfferEncoder>(
         DEFAULT_STACK_SIZE,
@@ -132,7 +133,7 @@ DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy
     firmPurchaseNet = std::make_shared<PurchaseNet>(
         DEFAULT_ENCODING_SIZE,
         DEFAULT_STACK_SIZE,
-        numUtilParams,
+        numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
@@ -149,21 +150,21 @@ DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy
         DEFAULT_HIDDEN_SIZE
     );
     productionNet = std::make_shared<ConsumptionNet>(
-        numUtilParams,
+        numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     offerNet = std::make_shared<OfferNet>(
         DEFAULT_ENCODING_SIZE,
         DEFAULT_STACK_SIZE,
-        numUtilParams,
+        numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     jobOfferNet = std::make_shared<JobOfferNet>(
         DEFAULT_ENCODING_SIZE,
         DEFAULT_STACK_SIZE,
-        numUtilParams,
+        numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
@@ -372,7 +373,7 @@ torch::Tensor DecisionNetHandler::getEncodedOffersForOfferCreation() {
     }
     else {
         auto offerIndices = torch::randint(
-            0, numEncodedOffers, offerNet->stackSize, torch::dtype(torch::kInt64)
+            0, numEncodedJobOffers, offerNet->stackSize, torch::dtype(torch::kInt64)
         );
         return encodedOffers.index_select(0, offerIndices);
     }

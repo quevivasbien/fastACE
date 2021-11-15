@@ -71,7 +71,7 @@ std::shared_ptr<SumOfVecToVec> create_CES_VecToVec(
             std::make_shared<CES>(
                 tfps[i], shareParams[i], elasticitiesOfSubstitution[i]
             ),
-            1,
+            numGoods,
             i
         );
     }
