@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include "base.h"
 
 namespace neural {
@@ -18,13 +19,16 @@ class NeuralEconomy : public Economy {
 public:
     NeuralEconomy(std::vector<std::string> goods, unsigned int maxAgents);
 
-    virtual void add_agent(std::shared_ptr<Agent> agent) override;
+    virtual void add_agent(std::shared_ptr<Person> person) override;
+    virtual void add_agent(std::shared_ptr<Firm> firm) override;
 
     unsigned int get_id_for_agent(std::shared_ptr<Agent> agent);
     unsigned int get_totalAgents() const;
     unsigned int get_maxAgents() const;
 
-private:
+protected:
+    void update_agentMap(std::shared_ptr<Agent> agent);
+
     std::unordered_map<std::shared_ptr<Agent>, unsigned int> agentMap;
     unsigned int totalAgents = 0;
     unsigned int maxAgents;

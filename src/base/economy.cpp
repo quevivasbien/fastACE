@@ -8,23 +8,29 @@ std::shared_ptr<Person> Economy::add_person() {
     return create<Person>(this);
 }
 
-void Economy::add_agent(std::shared_ptr<Agent> agent) {
+void Economy::add_agent(std::shared_ptr<Person> person) {
     std::lock_guard<std::mutex> lock(mutex);
-    assert(agent->get_economy() == this);
-    agents.push_back(agent);
+    assert(person->get_economy() == this);
+    persons.push_back(person);
 }
 
 std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
     return create<Firm>(this, firstOwner);
 }
 
+void Economy::add_agent(std::shared_ptr<Firm> firm) {
+    std::lock_guard<std::mutex> lock(mutex);
+    assert(firm->get_economy() == this);
+    firms.push_back(firm);
+}
+
 const std::string* Economy::get_name_for_good_id(unsigned int id) const {
     return &goods[id];
 }
 
-const std::vector<std::shared_ptr<Agent>>& Economy::get_agents() const { return agents; }
+const std::vector<std::shared_ptr<Person>>& Economy::get_persons() const { return persons; }
 
-unsigned int Economy::get_numAgents() const { return agents.size(); }
+const std::vector<std::shared_ptr<Firm>>& Economy::get_firms() const { return firms; }
 
 const std::vector<std::string>& Economy::get_goods() const { return goods; }
 
@@ -47,8 +53,9 @@ void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
 }
 
 
+template <typename A>
 void run_agents_(
-    const std::vector<std::shared_ptr<Agent>>* const agents,
+    const std::vector<std::shared_ptr<A>>* const agents,
     unsigned int startIdx, unsigned int endIdx
 ) {
     for (unsigned int i = startIdx; i < endIdx; i++) {
@@ -56,7 +63,8 @@ void run_agents_(
     }
 }
 
-void run_agents(const std::vector<std::shared_ptr<Agent>>* const agents) {
+template <typename A>
+void run_agents(const std::vector<std::shared_ptr<A>>* const agents) {
     // runs time_step for a vector of agents, multithreaded
     unsigned int numAgents = agents->size();
     auto numThreads = std::thread::hardware_concurrency();
@@ -73,7 +81,7 @@ void run_agents(const std::vector<std::shared_ptr<Agent>>* const agents) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
-                    run_agents_,
+                    run_agents_<A>,
                     agents,
                     indices[i],
                     indices[i+1]
@@ -88,21 +96,32 @@ void run_agents(const std::vector<std::shared_ptr<Agent>>* const agents) {
 
 bool Economy::time_step() {
     // check that all agents have caught up before stepping
-    for (auto agent : agents) {
-        if (agent->get_time() != time) {
+    for (auto person : persons) {
+        if (person->get_time() != time) {
+            return false;
+        }
+    }
+    for (auto firm : firms) {
+        if (firm->get_time() != time) {
             return false;
         }
     }
     time++;
     // now actually step
     // agents are shuffled first
-    std::shuffle(std::begin(agents), std::end(agents), rng);
+    std::shuffle(std::begin(persons), std::end(persons), rng);
+    std::shuffle(std::begin(firms), std::end(firms), rng);
+    // persons go first, then firms
     if (constants::multithreaded) {
-        run_agents(&agents);
+        run_agents(&persons);
+        run_agents(&firms);
     }
     else {
-        for (auto agent : agents) {
-            agent->time_step();
+        for (auto person : persons) {
+            person->time_step();
+        }
+        for (auto firm : firms) {
+            firm->time_step();
         }
     }
     flush<const Offer>(market);
@@ -111,8 +130,11 @@ bool Economy::time_step() {
         print_summary();
     }
     if (constants::verbose >= 3) {
-        for (auto agent : agents) {
-            agent->print_summary();
+        for (auto person : persons) {
+            person->print_summary();
+        }
+        for (auto firm : firms) {
+            firm->print_summary();
         }
     }
     return true;
