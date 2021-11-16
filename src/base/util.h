@@ -9,6 +9,7 @@
 #include <chrono>
 #include <iostream>
 #include <string>
+#include <Eigen/Dense>
 #include "constants.h"
 
 class Agent;
@@ -83,12 +84,17 @@ void print(unsigned int priority, Args&& ... args) {
 
 
 template <typename T>
-inline void print_status(T* origin, std::string status) {
+void print_status(T* origin, std::string status) {
     if (constants::verbose >= 2) {
         std::cout << origin
             << " (" << origin->get_typename() << ") : "
             << status << '\n';
     }
+}
+
+
+inline std::vector<double> eigenToVector(Eigen::ArrayXd eigvec) {
+    return std::vector<double>(&eigvec[0], eigvec.data() + eigvec.size());
 }
 
 
