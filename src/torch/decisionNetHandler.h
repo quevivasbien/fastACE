@@ -16,25 +16,37 @@ torch::Tensor eigenToTorch(Eigen::ArrayXd eigenArray);
 
 Eigen::ArrayXd torchToEigen(torch::Tensor tensor);
 
+// params is [batchsize] x n x 2 tensor
+// cols are {mu, sigma} for each of n obs
+// returns pair where first value is n sampled values from normal dist
+// and second value is log probas of those values
+std::pair<torch::Tensor, torch::Tensor> sample_normal(torch::Tensor params);
+
+// same as sample_normal, but applies sigmoid function to output values
+std::pair<torch::Tensor, torch::Tensor> sample_sigmoidNormal(torch::Tensor params);
+
+// same as sample_normal, but applies exp function to output values
+std::pair<torch::Tensor, torch::Tensor> sample_logNormal(torch::Tensor params);
+
 
 torch::Tensor get_purchase_probas(
-    const torch::Tensor& offerIndices, // dtype = kInt64
+    torch::Tensor offerIndices, // dtype = kInt64
     const Eigen::ArrayXd& utilParams,
     double budget,
     double labor,
     const Eigen::ArrayXd& inventory,
     std::shared_ptr<PurchaseNet> purchaseNet,
-    const torch::Tensor& encodedOffers
+    torch::Tensor encodedOffers
 );
 
 torch::Tensor get_job_probas(
-    const torch::Tensor& offerIndices, // dtype = kInt64
+    torch::Tensor offerIndices, // dtype = kInt64
     const Eigen::ArrayXd& utilParams,
     double money,
     double labor,
     const Eigen::ArrayXd& inventory,
     std::shared_ptr<PurchaseNet> laborSearchNet,
-    const torch::Tensor& encodedJobOffers
+    torch::Tensor encodedJobOffers
 );
 
 
@@ -85,7 +97,7 @@ struct DecisionNetHandler {
     void time_step();
 
     std::vector<Order<Offer>> create_offer_requests(
-        const torch::Tensor& offerIndices, // dtype = kInt64
+        torch::Tensor offerIndices, // dtype = kInt64
         torch::Tensor purchase_probas
     );
 
@@ -104,7 +116,7 @@ struct DecisionNetHandler {
     );
 
     std::vector<Order<JobOffer>> create_joboffer_requests(
-        const torch::Tensor& offerIndices, // dtype = kInt64
+        torch::Tensor offerIndices, // dtype = kInt64
         torch::Tensor job_probas
     );
 

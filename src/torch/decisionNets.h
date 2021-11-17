@@ -82,11 +82,11 @@ struct PurchaseNet : torch::nn::Module {
 		// inventory should be [batch size] x numGoods
 		// Output is interpreted as the probability that the agent takes each offer in the stack
 			// if that offer is affordable
-		const torch::Tensor& offerEncodings,
-		const torch::Tensor& utilParams,
-		const torch::Tensor& budget,
-		const torch::Tensor& labor,
-		const torch::Tensor& inventory
+		torch::Tensor offerEncodings,
+		torch::Tensor utilParams,
+		torch::Tensor budget,
+		torch::Tensor labor,
+		torch::Tensor inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
@@ -103,7 +103,8 @@ struct PurchaseNet : torch::nn::Module {
 struct ConsumptionNet : torch::nn::Module {
 	/**
 	This net takes as an input utilParams and the current inventory, money, and labor of an agent,
-	and returns the proportion of each good to consume.
+	and returns alpha and beta params for Beta distribution over proportion of each good to consume
+	output size will be numGoods x 2, where rows are mu and logsigma params for each good
 	*/
 	ConsumptionNet(
 		int numUtilParams,
@@ -112,10 +113,10 @@ struct ConsumptionNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		const torch::Tensor& utilParams,
-		const torch::Tensor& money,
-		const torch::Tensor& labor,
-		const torch::Tensor& inventory
+		torch::Tensor utilParams,
+		torch::Tensor money,
+		torch::Tensor labor,
+		torch::Tensor inventory
 	);
 
 	torch::nn::Linear first = nullptr;
@@ -124,16 +125,19 @@ struct ConsumptionNet : torch::nn::Module {
 	torch::nn::Linear last = nullptr;
 
 	int numUtilParams;
+	int numGoods;
 };
 
 
 struct OfferNet : torch::nn::Module {
 	/**
 	This net takes as an inputs offerEncodings, utilParams and the current inventory, money, and labor of an agent,
-	and returns (1) proportion of each good to sell, and (2) per-good prices at which to sell
+	and returns (1) mu and sigma params for proportion of each good to sell,
+	and (2) mu and logsigma params for per-good prices at which to sell
 
 	implementation looks very much like that of PurchaseNet; input should have the same form
-	output is a [batchSize] x numGoods x 2 tensor
+	output is a [batchSize] x numGoods x 4 tensor
+	{prop_mu, prop_logsigma, price_mu, price_logsigma}
 	*/
 	OfferNet(
 		int offerEncodingSize,
@@ -144,11 +148,11 @@ struct OfferNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		const torch::Tensor& offerEncodings,
-		const torch::Tensor& utilParams,
-		const torch::Tensor& money,
-		const torch::Tensor& labor,
-		const torch::Tensor& inventory
+		torch::Tensor offerEncodings,
+		torch::Tensor utilParams,
+		torch::Tensor money,
+		torch::Tensor labor,
+		torch::Tensor inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
@@ -161,12 +165,14 @@ struct OfferNet : torch::nn::Module {
 
 	int stackSize;
 	int numUtilParams;
+	int numGoods;
 };
 
 
 struct JobOfferNet : torch::nn::Module {
 	/**
-	Similar to OfferNet, but returns only a 2d vector {labor, wage_per_labor}
+	Similar to OfferNet, but returns only a 4d vector
+	{labor_mu, labor_logsigma, wage_per_labor_mu, wage_per_labor_logsigma}
 	*/
 	JobOfferNet(
 		int offerEncodingSize,
@@ -177,17 +183,48 @@ struct JobOfferNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		const torch::Tensor& offerEncodings,
-		const torch::Tensor& utilParams,
-		const torch::Tensor& money,
-		const torch::Tensor& labor,
-		const torch::Tensor& inventory
+		torch::Tensor offerEncodings,
+		torch::Tensor utilParams,
+		torch::Tensor money,
+		torch::Tensor labor,
+		torch::Tensor inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
 	torch::nn::Linear flatForward1 = nullptr;
 	torch::nn::Linear flatForward2 = nullptr;
 	torch::nn::Linear flatForward3 = nullptr;
+	torch::nn::Linear last = nullptr;
+
+	int stackSize;
+	int numUtilParams;
+};
+
+
+struct ValueNet : torch::nn::Module {
+	/**
+	Takes inputs representing state (the same inputs used to make purchasing decisions)
+	and returns a single value representing how good it is to be in that state
+	*/
+	ValueNet(
+		int offerEncodingSize,
+		int stackSize,
+		int numUtilParams,
+		int numGoods,
+		int hiddenSize
+	);
+
+	torch::Tensor forward(
+		torch::Tensor offerEncodings,
+		torch::Tensor utilParams,
+		torch::Tensor money,
+		torch::Tensor labor,
+		torch::Tensor inventory
+	);
+
+	torch::nn::Linear flatten = nullptr;
+	torch::nn::Linear flatForward1 = nullptr;
+	torch::nn::Linear flatForward2 = nullptr;
 	torch::nn::Linear last = nullptr;
 
 	int stackSize;

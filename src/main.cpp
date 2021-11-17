@@ -9,7 +9,6 @@
 const int stackSize = 2;
 const int offerEncodingSize = 3;
 
-
 int main() {
 
     neural::NeuralEconomy economy({"bread", "capital"}, 20);
