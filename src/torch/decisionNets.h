@@ -82,11 +82,11 @@ struct PurchaseNet : torch::nn::Module {
 		// inventory should be [batch size] x numGoods
 		// Output is interpreted as the probability that the agent takes each offer in the stack
 			// if that offer is affordable
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor budget,
-		torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& budget,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
@@ -113,10 +113,10 @@ struct ConsumptionNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		torch::Tensor utilParams,
-		torch::Tensor money,
-		torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
 	);
 
 	torch::nn::Linear first = nullptr;
@@ -148,11 +148,11 @@ struct OfferNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor money,
-		torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
@@ -183,11 +183,11 @@ struct JobOfferNet : torch::nn::Module {
 	);
 
 	torch::Tensor forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor money,
-		torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
 	);
 
 	torch::nn::Linear flatten = nullptr;
@@ -208,26 +208,31 @@ struct ValueNet : torch::nn::Module {
 	*/
 	ValueNet(
 		int offerEncodingSize,
-		int stackSize,
+		int jobOfferEncodingSize,
+		int offerStackSize,
+		int jobOfferStackSize,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
 	);
 
 	torch::Tensor forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor money,
-		torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& jobOfferEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+		const torch::Tensor& labor,
+		const torch::Tensor& inventory
 	);
 
-	torch::nn::Linear flatten = nullptr;
+	torch::nn::Linear offerFlatten = nullptr;
+	torch::nn::Linear jobOfferFlatten = nullptr;
 	torch::nn::Linear flatForward1 = nullptr;
 	torch::nn::Linear flatForward2 = nullptr;
 	torch::nn::Linear last = nullptr;
 
-	int stackSize;
+	int offerStackSize;
+	int jobOfferStackSize;
 	int numUtilParams;
 };
 

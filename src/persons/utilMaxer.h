@@ -42,6 +42,7 @@ public:
     double u(const Eigen::ArrayXd& quantities);  // implicitly inputs labor = laborSupplied
 
     std::shared_ptr<const VecToScalar> get_utilFunc() const;
+    double get_discountRate() const;
 
     virtual std::string get_typename() const override;
 
@@ -50,6 +51,7 @@ protected:
     UtilMaxer(
         Economy* economy,
         std::shared_ptr<VecToScalar> utilFunc,
+        double discountRate,
         std::shared_ptr<PersonDecisionMaker> decisionMaker
     );
     UtilMaxer(
@@ -57,6 +59,7 @@ protected:
         Eigen::ArrayXd inventory,
         double money,
         std::shared_ptr<VecToScalar> utilFunc,
+        double discountRate,
         std::shared_ptr<PersonDecisionMaker> decisionMaker
     );
     void init_decisionMaker();
@@ -64,6 +67,7 @@ protected:
     // utilFunc should be a VecToScalar with numInputs == economy->numGoods + 1
     // the first input is assumed to be 1 - labor (i.e. leisure), rest of inputs are goods quantities
     std::shared_ptr<VecToScalar> utilFunc;
+    double discountRate;
     std::shared_ptr<PersonDecisionMaker> decisionMaker;
 
     // calls gooChooser->choose_goods(), then requests those goods

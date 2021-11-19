@@ -17,6 +17,7 @@ int main() {
         Eigen::Array2d(10.0, 10.0),
         20.0,
         std::make_shared<CES>(1.0, Eigen::Array3d(0.5, 0.5, 0.5), 1.3),
+        0.8,
         std::make_shared<neural::NeuralPersonDecisionMaker>(dnh)
     );
     auto person2 = UtilMaxer::init(
@@ -24,6 +25,7 @@ int main() {
         Eigen::Array2d(10.0, 10.0),
         20.0,
         std::make_shared<CES>(1.0, Eigen::Array3d(0.2, 0.6, 0.4), 1.3),
+        0.9,
         std::make_shared<neural::NeuralPersonDecisionMaker>(dnh)
     );
 

@@ -57,11 +57,11 @@ PurchaseNet::PurchaseNet(
 }
 
 torch::Tensor PurchaseNet::forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor budget,
-        torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& budget,
+        const torch::Tensor& labor,
+		const torch::Tensor& inventory
 ) {
 	// first we get a single value for every element in the stack
 	torch::Tensor x = torch::tanh(flatten->forward(offerEncodings).squeeze(-1));
@@ -88,10 +88,10 @@ ConsumptionNet::ConsumptionNet(
 }
 
 torch::Tensor ConsumptionNet::forward(
-    torch::Tensor utilParams,
-    torch::Tensor money,
-    torch::Tensor labor,
-    torch::Tensor inventory
+    const torch::Tensor& utilParams,
+    const torch::Tensor& money,
+    const torch::Tensor& labor,
+    const torch::Tensor& inventory
 ) {
     torch::Tensor x = torch::cat({utilParams, money, labor, inventory}, -1);
     x = torch::relu(first->forward(x));
@@ -118,11 +118,11 @@ OfferNet::OfferNet(
 }
 
 torch::Tensor OfferNet::forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor money,
-        torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+        const torch::Tensor& labor,
+		const torch::Tensor& inventory
 ) {
 	// first we get a single value for every element in the stack
 	torch::Tensor x = torch::tanh(flatten->forward(offerEncodings).squeeze(-1));
@@ -157,11 +157,11 @@ JobOfferNet::JobOfferNet(
 }
 
 torch::Tensor JobOfferNet::forward(
-		torch::Tensor offerEncodings,
-		torch::Tensor utilParams,
-		torch::Tensor money,
-        torch::Tensor labor,
-		torch::Tensor inventory
+		const torch::Tensor& offerEncodings,
+		const torch::Tensor& utilParams,
+		const torch::Tensor& money,
+        const torch::Tensor& labor,
+		const torch::Tensor& inventory
 ) {
 	// first we get a single value for every element in the stack
 	torch::Tensor x = torch::tanh(flatten->forward(offerEncodings).squeeze(-1));
@@ -178,27 +178,34 @@ torch::Tensor JobOfferNet::forward(
 
 ValueNet::ValueNet(
 	int offerEncodingSize,
-	int stackSize,
+	int jobOfferEncodingSize,
+	int offerStackSize,
+	int jobOfferStackSize,
 	int numUtilParams,
 	int numGoods,
 	int hiddenSize
-) : stackSize(stackSize), numUtilParams(numUtilParams) {
-	flatten = create_linear(offerEncodingSize, 1);
-	flatForward1 = create_linear(stackSize + numUtilParams + numGoods + 2, hiddenSize);
+) : offerStackSize(offerStackSize),
+	jobOfferStackSize(jobOfferStackSize),
+	numUtilParams(numUtilParams) {
+	offerFlatten = create_linear(offerEncodingSize, 1);
+	jobOfferFlatten = create_linear(jobOfferEncodingSize, 1);
+	flatForward1 = create_linear(offerStackSize + jobOfferStackSize + numUtilParams + numGoods + 2, hiddenSize);
 	flatForward2 = create_linear(hiddenSize, hiddenSize);
 	last = create_linear(hiddenSize, 1);
 }
 
 torch::Tensor ValueNet::forward(
-	torch::Tensor offerEncodings,
-	torch::Tensor utilParams,
-	torch::Tensor money,
-	torch::Tensor labor,
-	torch::Tensor inventory
+	const torch::Tensor& offerEncodings,
+	const torch::Tensor& jobOfferEncodings,
+	const torch::Tensor& utilParams,
+	const torch::Tensor& money,
+	const torch::Tensor& labor,
+	const torch::Tensor& inventory
 ) {
 	// how this works is old news by now...
-	torch::Tensor x = torch::tanh(flatten->forward(offerEncodings).squeeze(-1));
-	x = torch::cat({x, utilParams, money, labor, inventory}, -1);
+	torch::Tensor offerX = torch::tanh(offerFlatten->forward(offerEncodings).squeeze(-1));
+	torch::Tensor jobOfferX = torch::tanh(jobOfferFlatten->forward(jobOfferEncodings).squeeze(-1));
+	torch::Tensor x = torch::cat({offerX, jobOfferX, utilParams, money, labor, inventory}, -1);
 	x = torch::relu(flatForward1->forward(x));
 	x = x + torch::relu(flatForward2->forward(x));
 	return last->forward(x);

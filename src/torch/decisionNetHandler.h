@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 #include <mutex>
 #include <utility>
+#include <unordered_map>
 #include "decisionNets.h"
 #include "base.h"
 #include "neuralEconomy.h"
@@ -62,30 +63,42 @@ struct DecisionNetHandler {
         std::shared_ptr<ConsumptionNet> consumptionNet,
         std::shared_ptr<ConsumptionNet> productionNet,
         std::shared_ptr<OfferNet> offerNet,
-        std::shared_ptr<JobOfferNet> jobOfferNet
+        std::shared_ptr<JobOfferNet> jobOfferNet,
+        std::shared_ptr<ValueNet> valueNet,
+        std::shared_ptr<ValueNet> firmValueNet
 	);
 
     DecisionNetHandler(NeuralEconomy* economy);
 
+    using MapTensor = std::unordered_map<std::shared_ptr<Agent>, torch::Tensor>;
+    using VecMapTensor = std::vector<MapTensor>;
+
 	NeuralEconomy* economy;
+
 	std::shared_ptr<OfferEncoder> offerEncoder;
-    std::vector<torch::Tensor> offerEncoderLogProba;
     std::shared_ptr<OfferEncoder> jobOfferEncoder;
-    std::vector<torch::Tensor> jobOfferEncoderLogProba;
 	std::shared_ptr<PurchaseNet> purchaseNet;
-    std::vector<torch::Tensor> purchaseNetLogProba;
     std::shared_ptr<PurchaseNet> firmPurchaseNet;
-    std::vector<torch::Tensor> firmPurchaseNetLogProba;
     std::shared_ptr<PurchaseNet> laborSearchNet;
-    std::vector<torch::Tensor> laborSearchNetLogProba;
     std::shared_ptr<ConsumptionNet> consumptionNet;
-    std::vector<torch::Tensor> consumptionNetLogProba;
     std::shared_ptr<ConsumptionNet> productionNet;
-    std::vector<torch::Tensor> productionNetLogProba;
     std::shared_ptr<OfferNet> offerNet;
-    std::vector<torch::Tensor> offerNetLogProba;
     std::shared_ptr<JobOfferNet> jobOfferNet;
-    std::vector<torch::Tensor> jobOfferNetLogProba;
+    std::shared_ptr<ValueNet> valueNet;
+    std::shared_ptr<ValueNet> firmValueNet;
+
+    VecMapTensor offerEncoderLogProba;
+    VecMapTensor jobOfferEncoderLogProba;
+    VecMapTensor purchaseNetLogProba;
+    VecMapTensor firmPurchaseNetLogProba;
+    VecMapTensor laborSearchNetLogProba;
+    VecMapTensor consumptionNetLogProba;
+    VecMapTensor productionNetLogProba;
+    VecMapTensor offerNetLogProba;
+    VecMapTensor jobOfferNetLogProba;
+
+    VecMapTensor values;
+    VecMapTensor rewards;
 
 	torch::Tensor encodedOffers;
     int numEncodedOffers;
@@ -103,7 +116,7 @@ struct DecisionNetHandler {
 
     void update_encodedJobOffers();
 
-    void push_back_logProbas();
+    void push_back_memory();
 
     void time_step();
 
@@ -112,13 +125,13 @@ struct DecisionNetHandler {
     torch::Tensor firm_generate_offerIndices();
     torch::Tensor firm_generate_jobOfferIndices();
 
-    std::vector<Order<Offer>> create_offer_requests(
+    std::pair<std::vector<Order<Offer>>, torch::Tensor> create_offer_requests(
         const torch::Tensor& offerIndices, // dtype = kInt64
-        const torch::Tensor& purchase_probas,
-        std::vector<torch::Tensor>& logProba
+        const torch::Tensor& purchase_probas
     );
 
 	std::vector<Order<Offer>> get_offers_to_request(
+        std::shared_ptr<Agent> caller,
         const torch::Tensor& offerIndices,
 		const Eigen::ArrayXd& utilParams,
 		double budget,
@@ -127,6 +140,7 @@ struct DecisionNetHandler {
 	);
 
     std::vector<Order<Offer>> firm_get_offers_to_request(
+        std::shared_ptr<Agent> caller,
         const torch::Tensor& offerIndices,
 		const Eigen::ArrayXd& prodFuncParams,
 		double budget,
@@ -134,13 +148,13 @@ struct DecisionNetHandler {
 		const Eigen::ArrayXd& inventory
     );
 
-    std::vector<Order<JobOffer>> create_joboffer_requests(
+    std::pair<std::vector<Order<JobOffer>>, torch::Tensor> create_joboffer_requests(
         const torch::Tensor& offerIndices, // dtype = kInt64
-        const torch::Tensor& job_probas,
-        std::vector<torch::Tensor>& logProba
+        const torch::Tensor& job_probas
     );
 
     std::vector<Order<JobOffer>> get_joboffers_to_request(
+        std::shared_ptr<Agent> caller,
         const torch::Tensor& jobOfferIndices,
         const Eigen::ArrayXd& utilParams,
         double money,
@@ -149,6 +163,7 @@ struct DecisionNetHandler {
     );
 
     Eigen::ArrayXd get_consumption_proportions(
+        std::shared_ptr<Agent> caller,
         const Eigen::ArrayXd& utilParams,
         double money,
         double labor,
@@ -156,21 +171,23 @@ struct DecisionNetHandler {
     );
 
     Eigen::ArrayXd get_production_proportions(
+        std::shared_ptr<Agent> caller,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
         double labor,
         const Eigen::ArrayXd& inventory
     );
 
-    torch::Tensor getEncodedOffersForOfferCreation(
+    torch::Tensor getEncodedOffersFromIndices(
         const torch::Tensor& offerIndices
     );
 
-    torch::Tensor getEncodedOffersForJobOfferCreation(
+    torch::Tensor getEncodedJobOffersFromIndices(
         const torch::Tensor& offerIndices
     );
 
     std::pair<Eigen::ArrayXd, Eigen::ArrayXd> choose_offers(
+        std::shared_ptr<Agent> caller,
         const torch::Tensor& offerIndices,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
@@ -179,11 +196,37 @@ struct DecisionNetHandler {
     );
 
     std::pair<double, double> choose_job_offers(
+        std::shared_ptr<Agent> caller,
         const torch::Tensor& offerIndices,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
         double labor,
         const Eigen::ArrayXd& inventory
+    );
+
+    void record_value(
+        std::shared_ptr<Agent> caller,
+        const torch::Tensor& offerIndices,
+        const torch::Tensor& jobOfferIndices,
+		const Eigen::ArrayXd& utilParams,
+		double money,
+        double labor,
+		const Eigen::ArrayXd& inventory
+    );
+
+    void firm_record_value(
+        std::shared_ptr<Agent> caller,
+        const torch::Tensor& offerIndices,
+        const torch::Tensor& jobOfferIndices,
+		const Eigen::ArrayXd& prodFuncParams,
+		double money,
+        double labor,
+		const Eigen::ArrayXd& inventory
+    );
+
+    void record_reward(
+        std::shared_ptr<Agent> caller,
+        double reward
     );
 
 };

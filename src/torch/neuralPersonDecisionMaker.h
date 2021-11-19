@@ -15,9 +15,6 @@ struct NeuralPersonDecisionMaker : PersonDecisionMaker {
 	virtual std::vector<Order<JobOffer>> choose_jobs() override;
 	virtual Eigen::ArrayXd choose_goods_to_consume() override;
 
-	void confirm_synchronized();
-	Eigen::ArrayXd get_utilParams() const;
-
 	std::shared_ptr<DecisionNetHandler> guide;
 
 protected:
@@ -25,6 +22,10 @@ protected:
     	std::shared_ptr<UtilMaxer> parent,
     	std::shared_ptr<DecisionNetHandler> guide
 	);
+
+	void confirm_synchronized();
+	void record_state_value();
+	Eigen::ArrayXd get_utilParams() const;
 
 	torch::Tensor myOfferIndices;
 	torch::Tensor myJobOfferIndices;

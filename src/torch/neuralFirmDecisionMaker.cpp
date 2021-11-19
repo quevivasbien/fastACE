@@ -51,6 +51,7 @@ std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
 
     // get & return offer requests
     return guide->firm_get_offers_to_request(
+        parent,
         myOfferIndices,
         get_prodFuncParams(),
         parent->get_money(),
@@ -64,6 +65,7 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::choose_production_inputs() {
     confirm_synchronized();
 
     return parent->get_inventory() * guide->get_production_proportions(
+        parent,
         get_prodFuncParams(),
         parent->get_money(),
         parent->get_laborHired(),
@@ -76,6 +78,7 @@ std::vector<std::shared_ptr<Offer>> NeuralFirmDecisionMaker::choose_good_offers(
     confirm_synchronized();
 
     auto amt_price_pair = guide->choose_offers(
+        parent,
         myOfferIndices,
         get_prodFuncParams(),
         parent->get_money(),
@@ -110,6 +113,7 @@ std::vector<std::shared_ptr<JobOffer>> NeuralFirmDecisionMaker::choose_job_offer
     confirm_synchronized();
 
     auto labor_wage_pair = guide->choose_job_offers(
+        parent,
         myJobOfferIndices,
         get_prodFuncParams(),
         parent->get_money(),

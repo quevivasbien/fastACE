@@ -7,15 +7,18 @@ UtilMaxer::UtilMaxer(
     Economy* economy
 ) : Person(economy),
     utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods() + 1)),
+    discountRate(1.0),
     decisionMaker(std::make_shared<BasicPersonDecisionMaker>())
 {}
 
 UtilMaxer::UtilMaxer(
     Economy* economy,
     std::shared_ptr<VecToScalar> utilFunc,
+    double discountRate,
     std::shared_ptr<PersonDecisionMaker> decisionMaker
 ) : Person(economy),
     utilFunc(utilFunc),
+    discountRate(discountRate),
     decisionMaker(decisionMaker)
 {}
 
@@ -24,9 +27,11 @@ UtilMaxer::UtilMaxer(
     Eigen::ArrayXd inventory,
     double money,
     std::shared_ptr<VecToScalar> utilFunc,
+    double discountRate,
     std::shared_ptr<PersonDecisionMaker> decisionMaker
 ) : Person(economy, inventory, money),
     utilFunc(utilFunc),
+    discountRate(discountRate),
     decisionMaker(decisionMaker)
 {}
 
@@ -37,6 +42,10 @@ void UtilMaxer::init_decisionMaker() {
 
 std::shared_ptr<const VecToScalar> UtilMaxer::get_utilFunc() const {
     return utilFunc;
+}
+
+double UtilMaxer::get_discountRate() const {
+    return discountRate;
 }
 
 std::string UtilMaxer::get_typename() const {
