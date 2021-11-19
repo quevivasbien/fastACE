@@ -8,7 +8,7 @@
 #include <utility>
 #include "decisionNets.h"
 #include "base.h"
-# include "neuralEconomy.h"
+#include "neuralEconomy.h"
 
 namespace neural {
 
@@ -69,14 +69,23 @@ struct DecisionNetHandler {
 
 	NeuralEconomy* economy;
 	std::shared_ptr<OfferEncoder> offerEncoder;
+    std::vector<torch::Tensor> offerEncoderLogProba;
     std::shared_ptr<OfferEncoder> jobOfferEncoder;
+    std::vector<torch::Tensor> jobOfferEncoderLogProba;
 	std::shared_ptr<PurchaseNet> purchaseNet;
+    std::vector<torch::Tensor> purchaseNetLogProba;
     std::shared_ptr<PurchaseNet> firmPurchaseNet;
+    std::vector<torch::Tensor> firmPurchaseNetLogProba;
     std::shared_ptr<PurchaseNet> laborSearchNet;
+    std::vector<torch::Tensor> laborSearchNetLogProba;
     std::shared_ptr<ConsumptionNet> consumptionNet;
+    std::vector<torch::Tensor> consumptionNetLogProba;
     std::shared_ptr<ConsumptionNet> productionNet;
+    std::vector<torch::Tensor> productionNetLogProba;
     std::shared_ptr<OfferNet> offerNet;
+    std::vector<torch::Tensor> offerNetLogProba;
     std::shared_ptr<JobOfferNet> jobOfferNet;
+    std::vector<torch::Tensor> jobOfferNetLogProba;
 
 	torch::Tensor encodedOffers;
     int numEncodedOffers;
@@ -86,7 +95,7 @@ struct DecisionNetHandler {
     int numEncodedJobOffers;
     std::vector<std::shared_ptr<const JobOffer>> jobOffers;
 
-    int time = 0;
+    int time = -1;
 
     std::mutex myMutex;
 
@@ -94,14 +103,23 @@ struct DecisionNetHandler {
 
     void update_encodedJobOffers();
 
+    void push_back_logProbas();
+
     void time_step();
 
+    torch::Tensor generate_offerIndices();
+    torch::Tensor generate_jobOfferIndices();
+    torch::Tensor firm_generate_offerIndices();
+    torch::Tensor firm_generate_jobOfferIndices();
+
     std::vector<Order<Offer>> create_offer_requests(
-        torch::Tensor offerIndices, // dtype = kInt64
-        torch::Tensor purchase_probas
+        const torch::Tensor& offerIndices, // dtype = kInt64
+        const torch::Tensor& purchase_probas,
+        std::vector<torch::Tensor>& logProba
     );
 
 	std::vector<Order<Offer>> get_offers_to_request(
+        const torch::Tensor& offerIndices,
 		const Eigen::ArrayXd& utilParams,
 		double budget,
         double labor,
@@ -109,6 +127,7 @@ struct DecisionNetHandler {
 	);
 
     std::vector<Order<Offer>> firm_get_offers_to_request(
+        const torch::Tensor& offerIndices,
 		const Eigen::ArrayXd& prodFuncParams,
 		double budget,
         double labor,
@@ -116,11 +135,13 @@ struct DecisionNetHandler {
     );
 
     std::vector<Order<JobOffer>> create_joboffer_requests(
-        torch::Tensor offerIndices, // dtype = kInt64
-        torch::Tensor job_probas
+        const torch::Tensor& offerIndices, // dtype = kInt64
+        const torch::Tensor& job_probas,
+        std::vector<torch::Tensor>& logProba
     );
 
     std::vector<Order<JobOffer>> get_joboffers_to_request(
+        const torch::Tensor& jobOfferIndices,
         const Eigen::ArrayXd& utilParams,
         double money,
         double labor,
@@ -141,9 +162,16 @@ struct DecisionNetHandler {
         const Eigen::ArrayXd& inventory
     );
 
-    torch::Tensor getEncodedOffersForOfferCreation();
+    torch::Tensor getEncodedOffersForOfferCreation(
+        const torch::Tensor& offerIndices
+    );
+
+    torch::Tensor getEncodedOffersForJobOfferCreation(
+        const torch::Tensor& offerIndices
+    );
 
     std::pair<Eigen::ArrayXd, Eigen::ArrayXd> choose_offers(
+        const torch::Tensor& offerIndices,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
         double labor,
@@ -151,6 +179,7 @@ struct DecisionNetHandler {
     );
 
     std::pair<double, double> choose_job_offers(
+        const torch::Tensor& offerIndices,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
         double labor,

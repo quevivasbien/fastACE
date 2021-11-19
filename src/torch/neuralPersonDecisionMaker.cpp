@@ -12,9 +12,14 @@ NeuralPersonDecisionMaker::NeuralPersonDecisionMaker(
 ) : NeuralPersonDecisionMaker(nullptr, guide) {}
 
 
-void NeuralPersonDecisionMaker::check_guide_is_current() {
+void NeuralPersonDecisionMaker::confirm_synchronized() {
     if (parent->get_time() > guide->time) {
         guide->time_step();
+    }
+    if (parent->get_time() > time) {
+        myOfferIndices = guide->generate_offerIndices();
+        myJobOfferIndices = guide->generate_jobOfferIndices();
+        time++;
     }
 }
 
@@ -28,10 +33,15 @@ Eigen::ArrayXd NeuralPersonDecisionMaker::get_utilParams() const {
 
 
 std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
-    check_guide_is_current();
+    confirm_synchronized();
+
+    if (myOfferIndices.size(0) == 0) {
+        return {};
+    }
 
     // get & return offer requests
     return guide->get_offers_to_request(
+        myOfferIndices,
         get_utilParams(),
         parent->get_money(),
         parent->get_laborSupplied(),
@@ -41,10 +51,15 @@ std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
 
 
 std::vector<Order<JobOffer>> NeuralPersonDecisionMaker::choose_jobs() {
-    check_guide_is_current();
+    confirm_synchronized();
+
+    if (myJobOfferIndices.size(0) == 0) {
+        return {};
+    }
 
     // get & return offer requests
     return guide->get_joboffers_to_request(
+        myJobOfferIndices,
         get_utilParams(),
         parent->get_money(),
         parent->get_laborSupplied(),
@@ -55,7 +70,7 @@ std::vector<Order<JobOffer>> NeuralPersonDecisionMaker::choose_jobs() {
 
 
 Eigen::ArrayXd NeuralPersonDecisionMaker::choose_goods_to_consume() {
-    check_guide_is_current();
+    confirm_synchronized();
 
     return parent->get_inventory() * guide->get_consumption_proportions(
         get_utilParams(),

@@ -1,2 +1,4 @@
 test*
 libtorch
+CMakeFiles
+.vscode

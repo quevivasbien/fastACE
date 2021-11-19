@@ -17,9 +17,14 @@ NeuralFirmDecisionMaker::NeuralFirmDecisionMaker(
 ) : NeuralFirmDecisionMaker(nullptr, guide) {}
 
 
-void NeuralFirmDecisionMaker::check_guide_is_current() {
+void NeuralFirmDecisionMaker::confirm_synchronized() {
     if (parent->get_time() > guide->time) {
         guide->time_step();
+    }
+    if (parent->get_time() > time) {
+        myOfferIndices = guide->firm_generate_offerIndices();
+        myJobOfferIndices = guide->firm_generate_jobOfferIndices();
+        time++;
     }
 }
 
@@ -38,10 +43,15 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::get_prodFuncParams() const {
 
 
 std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
-    check_guide_is_current();
+    confirm_synchronized();
+
+    if (myOfferIndices.size(0) == 0) {
+        return {};
+    }
 
     // get & return offer requests
     return guide->firm_get_offers_to_request(
+        myOfferIndices,
         get_prodFuncParams(),
         parent->get_money(),
         parent->get_laborHired(),
@@ -51,7 +61,7 @@ std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
 
 
 Eigen::ArrayXd NeuralFirmDecisionMaker::choose_production_inputs() {
-    check_guide_is_current();
+    confirm_synchronized();
 
     return parent->get_inventory() * guide->get_production_proportions(
         get_prodFuncParams(),
@@ -63,17 +73,18 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::choose_production_inputs() {
 
 
 std::vector<std::shared_ptr<Offer>> NeuralFirmDecisionMaker::choose_good_offers() {
-    check_guide_is_current();
+    confirm_synchronized();
 
-    auto pair = guide->choose_offers(
+    auto amt_price_pair = guide->choose_offers(
+        myOfferIndices,
         get_prodFuncParams(),
         parent->get_money(),
         parent->get_laborHired(),
         parent->get_inventory()
     );
 
-    Eigen::ArrayXd amounts = pair.first;
-    Eigen::ArrayXd prices = pair.second;
+    Eigen::ArrayXd amounts = amt_price_pair.first;
+    Eigen::ArrayXd prices = amt_price_pair.second;
 
     Eigen::ArrayXi numOffers = (amounts / AMOUNT_PER_OFFER).cast<int>();
 
@@ -96,17 +107,18 @@ std::vector<std::shared_ptr<Offer>> NeuralFirmDecisionMaker::choose_good_offers(
 
 
 std::vector<std::shared_ptr<JobOffer>> NeuralFirmDecisionMaker::choose_job_offers() {
-    check_guide_is_current();
+    confirm_synchronized();
 
-    auto pair = guide->choose_job_offers(
+    auto labor_wage_pair = guide->choose_job_offers(
+        myJobOfferIndices,
         get_prodFuncParams(),
         parent->get_money(),
         parent->get_laborHired(),
         parent->get_inventory()
     );
 
-    double laborAmount = pair.first;
-    double wage = pair.second;
+    double laborAmount = labor_wage_pair.first;
+    double wage = labor_wage_pair.second;
 
     int numOffers = laborAmount / LABOR_AMOUNT_PER_OFFER;
 

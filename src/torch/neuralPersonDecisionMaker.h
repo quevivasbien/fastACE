@@ -1,6 +1,7 @@
 #ifndef NEURAL_PERSON_DECISION_MAKER_H
 #define NEURAL_PERSON_DECISION_MAKER_H
 
+#include <torch/torch.h>
 #include "utilMaxer.h"
 #include "decisionNetHandler.h"
 
@@ -14,7 +15,7 @@ struct NeuralPersonDecisionMaker : PersonDecisionMaker {
 	virtual std::vector<Order<JobOffer>> choose_jobs() override;
 	virtual Eigen::ArrayXd choose_goods_to_consume() override;
 
-	void check_guide_is_current();
+	void confirm_synchronized();
 	Eigen::ArrayXd get_utilParams() const;
 
 	std::shared_ptr<DecisionNetHandler> guide;
@@ -24,6 +25,11 @@ protected:
     	std::shared_ptr<UtilMaxer> parent,
     	std::shared_ptr<DecisionNetHandler> guide
 	);
+
+	torch::Tensor myOfferIndices;
+	torch::Tensor myJobOfferIndices;
+
+	unsigned int time;
 };
 
 } // namespace neural

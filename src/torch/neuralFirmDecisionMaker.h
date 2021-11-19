@@ -1,6 +1,7 @@
 #ifndef NEURAL_FIRM_DECISION_MAKER_H
 #define NEURAL_FIRM_DECISION_MAKER_H
 
+#include <torch/torch.h>
 #include "profitMaxer.h"
 #include "decisionNetHandler.h"
 
@@ -15,7 +16,7 @@ struct NeuralFirmDecisionMaker : FirmDecisionMaker {
     virtual std::vector<Order<Offer>> choose_goods() override;
     virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() override;
 
-    void check_guide_is_current();
+    void confirm_synchronized();
 	Eigen::ArrayXd get_prodFuncParams() const;
 
 	std::shared_ptr<DecisionNetHandler> guide;
@@ -25,6 +26,11 @@ protected:
         std::shared_ptr<ProfitMaxer> parent,
         std::shared_ptr<DecisionNetHandler> guide
     );
+
+    torch::Tensor myOfferIndices;
+    torch::Tensor myJobOfferIndices;
+
+    unsigned int time;
 };
 
 } // namespace neural
