@@ -4,7 +4,7 @@
 PersonDecisionMaker::PersonDecisionMaker(std::shared_ptr<UtilMaxer> parent) : parent(parent) {}
 
 UtilMaxer::UtilMaxer(
-    Economy* economy
+    std::shared_ptr<Economy> economy
 ) : Person(economy),
     utilFunc(std::make_shared<CobbDouglas>(economy->get_numGoods() + 1)),
     discountRate(1.0),
@@ -12,7 +12,7 @@ UtilMaxer::UtilMaxer(
 {}
 
 UtilMaxer::UtilMaxer(
-    Economy* economy,
+    std::shared_ptr<Economy> economy,
     std::shared_ptr<VecToScalar> utilFunc,
     double discountRate,
     std::shared_ptr<PersonDecisionMaker> decisionMaker
@@ -23,7 +23,7 @@ UtilMaxer::UtilMaxer(
 {}
 
 UtilMaxer::UtilMaxer(
-    Economy* economy,
+    std::shared_ptr<Economy> economy,
     Eigen::ArrayXd inventory,
     double money,
     std::shared_ptr<VecToScalar> utilFunc,

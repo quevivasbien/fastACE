@@ -3,7 +3,7 @@
 
 #include <torch/torch.h>
 #include "utilMaxer.h"
-#include "decisionNetHandler.h"
+#include "neuralEconomy.h"
 
 namespace neural {
 

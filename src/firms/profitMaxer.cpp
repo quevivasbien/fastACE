@@ -5,7 +5,7 @@
 FirmDecisionMaker::FirmDecisionMaker(std::shared_ptr<ProfitMaxer> parent) : parent(parent) {}
 
 
-ProfitMaxer::ProfitMaxer(Economy* economy, std::shared_ptr<Agent> owner, unsigned int outputIndex) :
+ProfitMaxer::ProfitMaxer(std::shared_ptr<Economy> economy, std::shared_ptr<Agent> owner, unsigned int outputIndex) :
     Firm(economy, owner),
     prodFunc(
         std::make_shared<VToVFromVToS<CobbDouglas>>(
@@ -20,7 +20,7 @@ ProfitMaxer::ProfitMaxer(Economy* economy, std::shared_ptr<Agent> owner, unsigne
 {}
 
 ProfitMaxer::ProfitMaxer(
-    Economy* economy,
+    std::shared_ptr<Economy> economy,
     std::shared_ptr<Agent> owner,
     std::shared_ptr<VecToVec> prodFunc,
     std::shared_ptr<FirmDecisionMaker> decisionMaker
@@ -32,7 +32,7 @@ ProfitMaxer::ProfitMaxer(
 }
 
 ProfitMaxer::ProfitMaxer(
-    Economy* economy,
+    std::shared_ptr<Economy> economy,
     std::vector<std::shared_ptr<Agent>> owners,
     Eigen::ArrayXd inventory,
     double money,

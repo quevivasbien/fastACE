@@ -47,15 +47,15 @@ public:
     virtual std::string get_typename() const override;
 
 protected:
-    UtilMaxer(Economy* economy);
+    UtilMaxer(std::shared_ptr<Economy> economy);
     UtilMaxer(
-        Economy* economy,
+        std::shared_ptr<Economy> economy,
         std::shared_ptr<VecToScalar> utilFunc,
         double discountRate,
         std::shared_ptr<PersonDecisionMaker> decisionMaker
     );
     UtilMaxer(
-        Economy* economy,
+        std::shared_ptr<Economy> economy,
         Eigen::ArrayXd inventory,
         double money,
         std::shared_ptr<VecToScalar> utilFunc,

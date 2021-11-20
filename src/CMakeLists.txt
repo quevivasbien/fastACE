@@ -7,6 +7,7 @@ add_subdirectory(persons)
 add_subdirectory(firms)
 add_subdirectory(functions)
 add_subdirectory(torch)
+add_subdirectory(scenarios)
 
 
 target_link_libraries(main PUBLIC lib)

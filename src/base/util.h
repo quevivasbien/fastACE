@@ -92,4 +92,14 @@ inline void print_status(T* origin, std::string status) {
 }
 
 
+template <typename T>
+inline void print_status(std::shared_ptr<T> origin, std::string status) {
+    if (constants::verbose >= 2) {
+        std::cout << origin
+            << " (" << origin->get_typename() << ") : "
+            << status << '\n';
+    }
+}
+
+
 #endif

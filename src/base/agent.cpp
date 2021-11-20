@@ -1,12 +1,12 @@
 #include "base.h"
 
 
-Agent::Agent(Economy* economy) : economy(economy), money(0), time(economy->get_time()) {
+Agent::Agent(std::shared_ptr<Economy> economy) : economy(economy), money(0), time(economy->get_time()) {
     inventory = Eigen::ArrayXd::Zero(economy->get_numGoods());
 }
 
 Agent::Agent(
-    Economy* economy, Eigen::ArrayXd inventory, double money
+    std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money
 ) : economy(economy), inventory(inventory), money(money), time(economy->get_time()) {
     assert(inventory.size() == economy->get_numGoods());
 }
@@ -28,7 +28,7 @@ bool Agent::time_step() {
 }
 
 unsigned int Agent::get_time() const { return time; };
-Economy* Agent::get_economy() const { return economy; }
+std::shared_ptr<Economy> Agent::get_economy() const { return economy; }
 double Agent::get_money() const { return money; }
 const Eigen::ArrayXd& Agent::get_inventory() const { return inventory; }
 

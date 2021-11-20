@@ -39,18 +39,18 @@ public:
 
 protected:
     ProfitMaxer(
-        Economy* economy,
+        std::shared_ptr<Economy> economy,
         std::shared_ptr<Agent> owner,
         unsigned int outputIndex
     );
     ProfitMaxer(
-        Economy* economy,
+        std::shared_ptr<Economy> economy,
         std::shared_ptr<Agent> owner,
         std::shared_ptr<VecToVec> prodFunc,
         std::shared_ptr<FirmDecisionMaker> decisionMaker
     );
     ProfitMaxer(
-        Economy* economy,
+        std::shared_ptr<Economy> economy,
         std::vector<std::shared_ptr<Agent>> owners,
         Eigen::ArrayXd inventory,
         double money,

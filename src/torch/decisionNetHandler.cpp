@@ -1,16 +1,8 @@
-#define _USE_MATH_DEFINES
-#include <cmath>
-#include "decisionNetHandler.h"
+#include "neuralEconomy.h"
 
 // TODO: include the number of currently available offers as a parameter
 
 namespace neural {
-
-const double SQRT2PI = 2 / (M_2_SQRTPI * M_SQRT1_2);
-
-const int DEFAULT_STACK_SIZE = 10;
-const int DEFAULT_ENCODING_SIZE = 10;
-const int DEFAULT_HIDDEN_SIZE = 30;
 
 
 torch::Tensor eigenToTorch(Eigen::ArrayXd eigenArray) {
@@ -99,7 +91,7 @@ torch::Tensor get_job_probas(
 
 
 DecisionNetHandler::DecisionNetHandler(
-    NeuralEconomy* economy,
+    std::shared_ptr<NeuralEconomy> economy,
     std::shared_ptr<OfferEncoder> offerEncoder,
     std::shared_ptr<OfferEncoder> jobOfferEncoder,
     std::shared_ptr<PurchaseNet> purchaseNet,
@@ -124,12 +116,11 @@ DecisionNetHandler::DecisionNetHandler(
     valueNet(valueNet),
     firmValueNet(firmValueNet)
 {
-    assert(offerNet->stackSize == firmPurchaseNet->stackSize);
     time_step();
 };
 
 
-DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy) {
+DecisionNetHandler::DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy) : economy(economy) {
     int numAgents = economy->get_maxAgents();
     int numGoods = economy->get_numGoods();
     // NOTE: numUtilParams assumes persons have CES utility functions,
@@ -151,22 +142,19 @@ DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy
         DEFAULT_ENCODING_SIZE
     );
     purchaseNet = std::make_shared<PurchaseNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
+        offerEncoder,
         numUtilParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     firmPurchaseNet = std::make_shared<PurchaseNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
+        offerEncoder,
         numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     laborSearchNet = std::make_shared<PurchaseNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
+        jobOfferEncoder,
         numUtilParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
@@ -182,33 +170,27 @@ DecisionNetHandler::DecisionNetHandler(NeuralEconomy* economy) : economy(economy
         DEFAULT_HIDDEN_SIZE
     );
     offerNet = std::make_shared<OfferNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
+        offerEncoder,
         numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     jobOfferNet = std::make_shared<JobOfferNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
+        jobOfferEncoder,
         numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     valueNet = std::make_shared<ValueNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
-        DEFAULT_STACK_SIZE,
+        offerEncoder,
+        jobOfferEncoder,
         numUtilParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
     );
     firmValueNet = std::make_shared<ValueNet>(
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_ENCODING_SIZE,
-        DEFAULT_STACK_SIZE,
-        DEFAULT_STACK_SIZE,
+        offerEncoder,
+        jobOfferEncoder,
         numProdFuncParams,
         numGoods,
         DEFAULT_HIDDEN_SIZE
@@ -273,8 +255,6 @@ void DecisionNetHandler::update_encodedJobOffers() {
 void DecisionNetHandler::push_back_memory() {
     // Need to keep history of log probas for each net
     // This is for training with advantage actor-critic algorithm
-    offerEncoderLogProba.push_back(MapTensor());
-    jobOfferEncoderLogProba.push_back(MapTensor());
     purchaseNetLogProba.push_back(MapTensor());
     firmPurchaseNetLogProba.push_back(MapTensor());
     laborSearchNetLogProba.push_back(MapTensor());
@@ -302,7 +282,7 @@ torch::Tensor DecisionNetHandler::generate_offerIndices() {
     }
     // get random indices of offers to consider
     return torch::randint(
-        0, numEncodedOffers, purchaseNet->stackSize, torch::dtype(torch::kInt64)
+        0, numEncodedOffers, purchaseNet->offerEncoder->stackSize, torch::dtype(torch::kInt64)
     );
 }
 
@@ -312,7 +292,7 @@ torch::Tensor DecisionNetHandler::generate_jobOfferIndices() {
     }
     // get random indices of offers to consider
     return torch::randint(
-        0, numEncodedJobOffers, laborSearchNet->stackSize, torch::dtype(torch::kInt64)
+        0, numEncodedJobOffers, laborSearchNet->offerEncoder->stackSize, torch::dtype(torch::kInt64)
     );
 }
 
@@ -322,7 +302,7 @@ torch::Tensor DecisionNetHandler::firm_generate_offerIndices() {
     }
     // get random indices of offers to consider
     return torch::randint(
-        0, numEncodedOffers, firmPurchaseNet->stackSize, torch::dtype(torch::kInt64)
+        0, numEncodedOffers, firmPurchaseNet->offerEncoder->stackSize, torch::dtype(torch::kInt64)
     );
 }
 
@@ -332,7 +312,7 @@ torch::Tensor DecisionNetHandler::firm_generate_jobOfferIndices() {
     }
     // get random indices of offers to consider
     return torch::randint(
-        0, numEncodedJobOffers, jobOfferNet->stackSize, torch::dtype(torch::kInt64)
+        0, numEncodedJobOffers, jobOfferNet->offerEncoder->stackSize, torch::dtype(torch::kInt64)
     );
 }
 
@@ -478,7 +458,7 @@ torch::Tensor DecisionNetHandler::getEncodedOffersFromIndices(
 ) {
     if (offerIndices.size(0) == 0) {
         // return a tensor of zeros of the appropriate shape, meaning no offers currently on market
-        return torch::zeros({offerNet->stackSize, offerEncoder->encodingSize});
+        return torch::zeros({offerEncoder->stackSize, offerEncoder->encodingSize});
     }
     else {
         return encodedOffers.index_select(0, offerIndices);
@@ -491,7 +471,7 @@ torch::Tensor DecisionNetHandler::getEncodedJobOffersFromIndices(
 ) {
     if (offerIndices.size(0) == 0) {
         // return a tensor of zeros of the appropriate shape, meaning no offers currently on market
-        return torch::zeros({jobOfferNet->stackSize, jobOfferEncoder->encodingSize});
+        return torch::zeros({jobOfferEncoder->stackSize, jobOfferEncoder->encodingSize});
     }
     else {
         return encodedJobOffers.index_select(0, offerIndices);

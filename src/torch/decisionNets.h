@@ -68,8 +68,7 @@ struct PurchaseNet : torch::nn::Module {
 	flatSize is the size of the net's hidden layers
 	*/
 	PurchaseNet(
-		int offerEncodingSize,
-		int stackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
@@ -95,7 +94,9 @@ struct PurchaseNet : torch::nn::Module {
 	torch::nn::Linear flatForward3 = nullptr;
 	torch::nn::Linear last = nullptr;
 
-	int stackSize;
+	// You should use this offer encoder to encode any offers
+	// *before* passing them through the forward method
+	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	int numUtilParams;
 };
 
@@ -140,8 +141,7 @@ struct OfferNet : torch::nn::Module {
 	{prop_mu, prop_logsigma, price_mu, price_logsigma}
 	*/
 	OfferNet(
-		int offerEncodingSize,
-		int stackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
@@ -163,7 +163,7 @@ struct OfferNet : torch::nn::Module {
 	torch::nn::Linear lasta = nullptr;
 	torch::nn::Linear lastb = nullptr;
 
-	int stackSize;
+	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	int numUtilParams;
 	int numGoods;
 };
@@ -175,8 +175,7 @@ struct JobOfferNet : torch::nn::Module {
 	{labor_mu, labor_logsigma, wage_per_labor_mu, wage_per_labor_logsigma}
 	*/
 	JobOfferNet(
-		int offerEncodingSize,
-		int stackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
@@ -196,7 +195,7 @@ struct JobOfferNet : torch::nn::Module {
 	torch::nn::Linear flatForward3 = nullptr;
 	torch::nn::Linear last = nullptr;
 
-	int stackSize;
+	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	int numUtilParams;
 };
 
@@ -207,10 +206,8 @@ struct ValueNet : torch::nn::Module {
 	and returns a single value representing how good it is to be in that state
 	*/
 	ValueNet(
-		int offerEncodingSize,
-		int jobOfferEncodingSize,
-		int offerStackSize,
-		int jobOfferStackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
+		std::shared_ptr<OfferEncoder> jobOfferEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
@@ -231,8 +228,8 @@ struct ValueNet : torch::nn::Module {
 	torch::nn::Linear flatForward2 = nullptr;
 	torch::nn::Linear last = nullptr;
 
-	int offerStackSize;
-	int jobOfferStackSize;
+	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
+	std::shared_ptr<OfferEncoder> jobOfferEncoder = nullptr;
 	int numUtilParams;
 };
 

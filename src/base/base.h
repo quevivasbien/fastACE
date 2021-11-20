@@ -76,7 +76,7 @@ struct Order {
 // esp if search costs are implemented
 
 
-class Economy {
+class Economy : public std::enable_shared_from_this<Economy> {
     // the Economy manages all the agents and holds the markets for goods and labor
 public:
     Economy(std::vector<std::string> goods);
@@ -139,7 +139,7 @@ public:
     virtual bool time_step();
 
     unsigned int get_time() const;
-    Economy* get_economy() const;
+    std::shared_ptr<Economy> get_economy() const;
     double get_money() const;
     const Eigen::ArrayXd& get_inventory() const;
 
@@ -155,10 +155,10 @@ public:
     virtual void print_summary() const;
 
 protected:
-    Agent(Economy* economy);
-    Agent(Economy* economy, Eigen::ArrayXd inventory, double money);
+    Agent(std::shared_ptr<Economy> economy);
+    Agent(std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money);
 
-    Economy* economy;  // the economy this Agent is a part of
+    std::shared_ptr<Economy> economy;  // the economy this Agent is a part of
     Eigen::ArrayXd inventory;
     // the offers this agent has listed on the market
     std::vector<std::shared_ptr<Offer>> myOffers;
@@ -206,8 +206,8 @@ public:
     virtual std::string get_typename() const override;
 
 protected:
-    Person(Economy* economy);
-    Person(Economy* economy, Eigen::ArrayXd inventory, double money);
+    Person(std::shared_ptr<Economy> economy);
+    Person(std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money);
 
 	double laborSupplied = 0.0;
 
@@ -246,8 +246,8 @@ public:
     virtual std::string get_typename() const override;
 
 protected:
-    Firm(Economy* economy, std::shared_ptr<Agent> owner);
-    Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money);
+    Firm(std::shared_ptr<Economy> economy, std::shared_ptr<Agent> owner);
+    Firm(std::shared_ptr<Economy> economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money);
 
     std::vector<std::shared_ptr<Agent>> owners;
     // the job offers this firm has listed on the job market

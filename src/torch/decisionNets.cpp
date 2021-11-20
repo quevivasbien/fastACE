@@ -10,12 +10,6 @@ void xavier_init(torch::nn::Module& module) {
 	}
 }
 
-torch::nn::Linear create_linear(int in_features, int out_features) {
-	torch::nn::Linear linear(in_features, out_features);
-	linear->apply(xavier_init);
-	return linear;
-}
-
 
 OfferEncoder::OfferEncoder(
 	int stackSize,
@@ -23,10 +17,23 @@ OfferEncoder::OfferEncoder(
 	int intermediateSize,
 	int encodingSize
 ) : stackSize(stackSize), encodingSize(encodingSize) {
-	dimReduce = create_linear(numFeatures, intermediateSize);
-	stackedForward1 = create_linear(intermediateSize, intermediateSize);
-	stackedForward2 = create_linear(intermediateSize, intermediateSize);
-	last = create_linear(intermediateSize, encodingSize);
+	dimReduce = register_module(
+		"dimReduce",
+		torch::nn::Linear(numFeatures, intermediateSize)
+	);
+	stackedForward1 = register_module(
+		"stackedForward1",
+		torch::nn::Linear(intermediateSize, intermediateSize)
+	);
+	stackedForward2 = register_module(
+		"stackedForward2",
+		torch::nn::Linear(intermediateSize, intermediateSize)
+	);
+	last = register_module(
+		"last",
+		torch::nn::Linear(intermediateSize, encodingSize)
+	);
+	this->apply(xavier_init);
 }
 
 torch::Tensor OfferEncoder::forward(torch::Tensor x) {
@@ -43,17 +50,36 @@ torch::Tensor OfferEncoder::forward(torch::Tensor x) {
 
 
 PurchaseNet::PurchaseNet(
-		int offerEncodingSize,
-		int stackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
-) : stackSize(stackSize), numUtilParams(numUtilParams) {
-	flatten = create_linear(offerEncodingSize, 1);
-	flatForward1 = create_linear(stackSize + numUtilParams + numGoods + 2, hiddenSize);
-	flatForward2 = create_linear(hiddenSize, hiddenSize);
-	flatForward3 = create_linear(hiddenSize, hiddenSize);
-	last = create_linear(hiddenSize, stackSize);
+) : numUtilParams(numUtilParams) {
+	flatten = register_module(
+		"flatten",
+		torch::nn::Linear(offerEncoder->encodingSize, 1)
+	);
+	flatForward1 = register_module(
+		"flatForward1",
+		torch::nn::Linear(offerEncoder->stackSize + numUtilParams + numGoods + 2, hiddenSize)
+	);
+	flatForward2 = register_module(
+		"flatForward2",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	flatForward3 = register_module(
+		"flatForward3",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	last = register_module(
+		"last",
+		torch::nn::Linear(hiddenSize, offerEncoder->stackSize)
+	);
+	this->apply(xavier_init);
+
+	// This is necessary in order to pass along the encoder's parameters
+	// when doing backpropagation on the PurchaseNet
+	this->offerEncoder = register_module("offerEncoder", offerEncoder);
 }
 
 torch::Tensor PurchaseNet::forward(
@@ -81,10 +107,23 @@ ConsumptionNet::ConsumptionNet(
     int numGoods,
     int hiddenSize
 ) : numUtilParams(numUtilParams), numGoods(numGoods) {
-    first = create_linear(numUtilParams + numGoods + 2, hiddenSize);
-    hidden1 = create_linear(hiddenSize, hiddenSize);
-    hidden2 = create_linear(hiddenSize, hiddenSize);
-    last = create_linear(hiddenSize, numGoods * 2);
+    first = register_module(
+		"first",
+		torch::nn::Linear(numUtilParams + numGoods + 2, hiddenSize)
+	);
+    hidden1 = register_module(
+		"hidden1",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+    hidden2 = register_module(
+		"hidden2",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+    last = register_module(
+		"last",
+		torch::nn::Linear(hiddenSize, numGoods * 2)
+	);
+	this->apply(xavier_init);
 }
 
 torch::Tensor ConsumptionNet::forward(
@@ -102,19 +141,42 @@ torch::Tensor ConsumptionNet::forward(
 
 
 OfferNet::OfferNet(
-		int offerEncodingSize,
-		int stackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
-) : stackSize(stackSize), numUtilParams(numUtilParams), numGoods(numGoods) {
-	flatten = create_linear(offerEncodingSize, 1);
-	flatForward1 = create_linear(stackSize + numUtilParams + numGoods + 2, hiddenSize);
-	flatForward2 = create_linear(hiddenSize, hiddenSize);
-	flatForward3a = create_linear(hiddenSize, hiddenSize);
-	flatForward3b = create_linear(hiddenSize, hiddenSize);
-	lasta = create_linear(hiddenSize, numGoods * 2);
-	lastb = create_linear(hiddenSize, numGoods * 2);
+) : numUtilParams(numUtilParams), numGoods(numGoods) {
+	flatten = register_module(
+		"flatten",
+		torch::nn::Linear(offerEncoder->encodingSize, 1)
+	);
+	flatForward1 = register_module(
+		"flatForward1",
+		torch::nn::Linear(offerEncoder->stackSize + numUtilParams + numGoods + 2, hiddenSize)
+	);
+	flatForward2 = register_module(
+		"flatForward2",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	flatForward3a = register_module(
+		"flatForward3a",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	flatForward3b = register_module(
+		"flatForward3b",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	lasta = register_module(
+		"lasta",
+		torch::nn::Linear(hiddenSize, numGoods * 2)
+	);
+	lastb = register_module(
+		"lastb",
+		torch::nn::Linear(hiddenSize, numGoods * 2)
+	);
+	this->apply(xavier_init);
+
+	this->offerEncoder = register_module("offerEncoder", offerEncoder);
 }
 
 torch::Tensor OfferNet::forward(
@@ -143,17 +205,34 @@ torch::Tensor OfferNet::forward(
 
 
 JobOfferNet::JobOfferNet(
-		int offerEncodingSize,
-		int stackSize,
+		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
 		int hiddenSize
-) : stackSize(stackSize), numUtilParams(numUtilParams) {
-	flatten = create_linear(offerEncodingSize, 1);
-	flatForward1 = create_linear(stackSize + numUtilParams + numGoods + 2, hiddenSize);
-	flatForward2 = create_linear(hiddenSize, hiddenSize);
-	flatForward3 = create_linear(hiddenSize, hiddenSize);
-	last = create_linear(hiddenSize, 4);
+) : numUtilParams(numUtilParams) {
+	flatten = register_module(
+		"flatten",
+		torch::nn::Linear(offerEncoder->encodingSize, 1)
+	);
+	flatForward1 = register_module(
+		"flatForward1",
+		torch::nn::Linear(offerEncoder->stackSize + numUtilParams + numGoods + 2, hiddenSize)
+	);
+	flatForward2 = register_module(
+		"flatForward2",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	flatForward3 = register_module(
+		"flatForward3",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	last = register_module(
+		"last",
+		torch::nn::Linear(hiddenSize, 4)
+	);
+	this->apply(xavier_init);
+
+	this->offerEncoder = offerEncoder;
 }
 
 torch::Tensor JobOfferNet::forward(
@@ -177,21 +256,39 @@ torch::Tensor JobOfferNet::forward(
 
 
 ValueNet::ValueNet(
-	int offerEncodingSize,
-	int jobOfferEncodingSize,
-	int offerStackSize,
-	int jobOfferStackSize,
+	std::shared_ptr<OfferEncoder> offerEncoder,
+	std::shared_ptr<OfferEncoder> jobOfferEncoder,
 	int numUtilParams,
 	int numGoods,
 	int hiddenSize
-) : offerStackSize(offerStackSize),
-	jobOfferStackSize(jobOfferStackSize),
-	numUtilParams(numUtilParams) {
-	offerFlatten = create_linear(offerEncodingSize, 1);
-	jobOfferFlatten = create_linear(jobOfferEncodingSize, 1);
-	flatForward1 = create_linear(offerStackSize + jobOfferStackSize + numUtilParams + numGoods + 2, hiddenSize);
-	flatForward2 = create_linear(hiddenSize, hiddenSize);
-	last = create_linear(hiddenSize, 1);
+) : numUtilParams(numUtilParams) {
+	offerFlatten = register_module(
+		"offerFlatten",
+		torch::nn::Linear(offerEncoder->encodingSize, 1)
+	);
+	jobOfferFlatten = register_module(
+		"jobOfferFlatten",
+		torch::nn::Linear(jobOfferEncoder->encodingSize, 1)
+	);
+	flatForward1 = register_module(
+		"flatForward1",
+		torch::nn::Linear(
+			offerEncoder->stackSize + jobOfferEncoder->stackSize + numUtilParams + numGoods + 2,
+			hiddenSize
+		)
+	);
+	flatForward2 = register_module(
+		"flatForward2",
+		torch::nn::Linear(hiddenSize, hiddenSize)
+	);
+	last = register_module(
+		"last",
+		torch::nn::Linear(hiddenSize, 1)
+	);
+	this->apply(xavier_init);
+
+	this->offerEncoder = register_module("offerEncoder", offerEncoder);
+	this->jobOfferEncoder = register_module("jobOfferEncoder", jobOfferEncoder);
 }
 
 torch::Tensor ValueNet::forward(
