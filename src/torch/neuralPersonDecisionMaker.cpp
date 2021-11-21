@@ -13,12 +13,12 @@ NeuralPersonDecisionMaker::NeuralPersonDecisionMaker(
 
 
 void NeuralPersonDecisionMaker::confirm_synchronized() {
-    std::cout << guide->time << ' ' << parent->get_time() << ' ' << time << std::endl;
     if (parent->get_time() > guide->time) {
         guide->time_step();
     }
     if (parent->get_time() > time) {
         time++;
+        utilParams = get_utilParams();
         myOfferIndices = guide->generate_offerIndices();
         myJobOfferIndices = guide->generate_jobOfferIndices();
         record_state_value();
@@ -38,7 +38,7 @@ void NeuralPersonDecisionMaker::record_state_value() {
         parent,
         myOfferIndices,
         myJobOfferIndices,
-        get_utilParams(),
+        utilParams,
         parent->get_money(),
         parent->get_laborSupplied(),
         parent->get_inventory()
@@ -49,15 +49,11 @@ void NeuralPersonDecisionMaker::record_state_value() {
 std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
     confirm_synchronized();
 
-    if (myOfferIndices.size(0) == 0) {
-        return {};
-    }
-
     // get & return offer requests
     return guide->get_offers_to_request(
         parent,
         myOfferIndices,
-        get_utilParams(),
+        utilParams,
         parent->get_money(),
         parent->get_laborSupplied(),
         parent->get_inventory()
@@ -68,15 +64,11 @@ std::vector<Order<Offer>> NeuralPersonDecisionMaker::choose_goods() {
 std::vector<Order<JobOffer>> NeuralPersonDecisionMaker::choose_jobs() {
     confirm_synchronized();
 
-    if (myJobOfferIndices.size(0) == 0) {
-        return {};
-    }
-
     // get & return offer requests
     return guide->get_joboffers_to_request(
         parent,
         myJobOfferIndices,
-        get_utilParams(),
+        utilParams,
         parent->get_money(),
         parent->get_laborSupplied(),
         parent->get_inventory()
@@ -90,7 +82,7 @@ Eigen::ArrayXd NeuralPersonDecisionMaker::choose_goods_to_consume() {
 
     Eigen::ArrayXd to_consume = parent->get_inventory() * guide->get_consumption_proportions(
         parent,
-        get_utilParams(),
+        utilParams,
         parent->get_money(),
         parent->get_laborSupplied(),
         parent->get_inventory()

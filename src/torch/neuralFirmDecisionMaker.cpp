@@ -44,11 +44,7 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::get_prodFuncParams() const {
 
 std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
     confirm_synchronized();
-
-    if (myOfferIndices.size(0) == 0) {
-        return {};
-    }
-
+    
     // get & return offer requests
     return guide->firm_get_offers_to_request(
         parent,

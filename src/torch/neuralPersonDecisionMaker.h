@@ -30,6 +30,8 @@ protected:
 	torch::Tensor myOfferIndices;
 	torch::Tensor myJobOfferIndices;
 
+	Eigen::ArrayXd utilParams;
+
 	unsigned int time = 0;
 };
 
