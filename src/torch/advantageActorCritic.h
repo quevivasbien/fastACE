@@ -7,7 +7,6 @@
 #include "utilMaxer.h"
 #include "profitMaxer.h"
 #include "util.h"
-#include "neuralScenarios.h"
 
 
 namespace neural {
@@ -121,7 +120,7 @@ struct AdvantageActorCritic {
         std::shared_ptr<Agent> agent,
         const torch::Tensor& advantage
     ) {
-        auto logProbas_ = torch::empty(handler->time + 1);
+        auto logProbas_ = torch::empty(handler->time + 1, torch::requires_grad(true));
         for (int t = 0; t <= handler->time; t++) {
             auto logProbaSearch = logProbas[t].find(agent);
             if (logProbaSearch != logProbas[t].end()) {
@@ -141,27 +140,29 @@ struct AdvantageActorCritic {
     }
 
     void train_on_person_in_episode(std::shared_ptr<Person> person) {
-        auto person_ = std::static_pointer_cast<UtilMaxer>(person);
+        auto person_as_agent = std::static_pointer_cast<Agent>(person);
+        auto person_as_utilmaxer = std::static_pointer_cast<UtilMaxer>(person);
 
         // Calculate advantage time series
         // advantage is realized utility minus predicted value in each state
-        auto advantage = torch::empty(handler->time + 1);
-        auto q = torch::tensor(0.0);
+        auto advantage = torch::empty(handler->time + 1, torch::requires_grad(true));
+        auto q = torch::tensor(0.0, torch::requires_grad(true));
         for (int t = handler->time; t >= 0; t--) {
-            auto reward_search = handler->rewards[t].find(person);
-            auto value_search = handler->values[t].find(person);
+            auto reward_search = handler->rewards[t].find(person_as_agent);
+            auto value_search = handler->values[t].find(person_as_agent);
             if (
                 (reward_search != handler->rewards[t].end())
                 && (value_search != handler->values[t].end())
             ) {
                 auto reward = reward_search->second;
                 auto value = value_search->second;
-                q = reward + person_->get_discountRate() * q;
+                q = reward + person_as_utilmaxer->get_discountRate() * q;
                 advantage[t] = q - value;
             }
             else {
                 print_status(
-                    person_, "WARNING: Can't find in rewards || value map at time " + std::to_string(t)
+                    person_as_utilmaxer,
+                    "WARNING: Can't find in rewards || value map at time " + std::to_string(t)
                 );
             }
         }

@@ -14,18 +14,13 @@
 namespace neural {
 
 struct SimpleScenario : Scenario {
-    SimpleScenario() : handler(nullptr) {}
-    SimpleScenario(std::shared_ptr<DecisionNetHandler> handler) : handler(handler) {}
+    SimpleScenario() : handler(nullptr), trainer(nullptr) {}
+    SimpleScenario(
+        std::shared_ptr<AdvantageActorCritic> trainer
+    ) : handler(trainer->handler), trainer(trainer) {}
 
     virtual std::shared_ptr<Economy> setup() {
-        std::shared_ptr<NeuralEconomy> economy;
-        if (handler == nullptr) {
-            economy = NeuralEconomy::init({"bread", "capital"}, 3);
-            handler = economy->handler;
-        }
-        else {
-            economy = NeuralEconomy::init({"bread", "capital"}, 3, handler);
-        }
+        std::shared_ptr<NeuralEconomy> economy = get_economy();
 
         auto person1 = UtilMaxer::init(
             economy,
@@ -64,8 +59,25 @@ struct SimpleScenario : Scenario {
     }
 
     std::shared_ptr<DecisionNetHandler> handler;
-    // TODO: Integrate this:
-    std::shared_ptr<AdvantageActorCritic> trainer = nullptr;
+    std::shared_ptr<AdvantageActorCritic> trainer;
+
+protected:
+    std::shared_ptr<NeuralEconomy> get_economy() {
+        std::shared_ptr<NeuralEconomy> economy;
+        // if handler not yet initialized, initialize as default handler
+        if (handler == nullptr) {
+            economy = NeuralEconomy::init({"bread", "capital"}, 3);
+            handler = economy->handler;
+        }
+        else {
+            economy = NeuralEconomy::init({"bread", "capital"}, 3, handler);
+        }
+        // also make sure trainer is initialized
+        if (trainer == nullptr) {
+            trainer = std::make_shared<AdvantageActorCritic>(handler);
+        }
+        return economy;
+    }
 };
 
 } // namespace neural

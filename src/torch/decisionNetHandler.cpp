@@ -559,6 +559,7 @@ void DecisionNetHandler::record_value(
     auto money_ = torch::tensor(money);
     auto labor_ = torch::tensor(labor);
     auto inventory_ = eigenToTorch(inventory);
+    std::cout << "Recording value at time " << time << " for agent " << caller << std::endl;
     values[time][caller] = valueNet->forward(
         offerEncodings,
         jobOfferEncodings,

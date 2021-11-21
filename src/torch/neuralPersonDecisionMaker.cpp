@@ -13,6 +13,7 @@ NeuralPersonDecisionMaker::NeuralPersonDecisionMaker(
 
 
 void NeuralPersonDecisionMaker::confirm_synchronized() {
+    std::cout << guide->time << ' ' << parent->get_time() << ' ' << time << std::endl;
     if (parent->get_time() > guide->time) {
         guide->time_step();
     }
