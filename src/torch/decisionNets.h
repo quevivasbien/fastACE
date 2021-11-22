@@ -104,7 +104,7 @@ struct PurchaseNet : torch::nn::Module {
 struct ConsumptionNet : torch::nn::Module {
 	/**
 	This net takes as an input utilParams and the current inventory, money, and labor of an agent,
-	and returns alpha and beta params for Beta distribution over proportion of each good to consume
+	and returns mu and logsigma for logitNormal distribution over proportion of each good to consume
 	output size will be numGoods x 2, where rows are mu and logsigma params for each good
 	*/
 	ConsumptionNet(
@@ -133,12 +133,17 @@ struct ConsumptionNet : torch::nn::Module {
 struct OfferNet : torch::nn::Module {
 	/**
 	This net takes as an inputs offerEncodings, utilParams and the current inventory, money, and labor of an agent,
-	and returns (1) mu and sigma params for proportion of each good to sell,
+	and returns (1) mu and logsigma params for proportion of each good to sell,
 	and (2) mu and logsigma params for per-good prices at which to sell
 
 	implementation looks very much like that of PurchaseNet; input should have the same form
 	output is a [batchSize] x numGoods x 4 tensor
 	{prop_mu, prop_logsigma, price_mu, price_logsigma}
+
+	Note that proportion outputs will be plugged in as parameters for a logitNormal distribution
+	(to generate values in range [0, 1])
+	and price outputs will be plugged in as parameters for a logNormal distribution
+	(to generate values in range [0, infty))
 	*/
 	OfferNet(
 		std::shared_ptr<OfferEncoder> offerEncoder,
@@ -173,6 +178,8 @@ struct JobOfferNet : torch::nn::Module {
 	/**
 	Similar to OfferNet, but returns only a 4d vector
 	{labor_mu, labor_logsigma, wage_per_labor_mu, wage_per_labor_logsigma}
+
+	Here both labor and wage params will be plugged in as params for logNormal distributions
 	*/
 	JobOfferNet(
 		std::shared_ptr<OfferEncoder> offerEncoder,

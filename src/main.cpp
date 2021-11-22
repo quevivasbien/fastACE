@@ -4,12 +4,9 @@
 
 int main() {
 
-    auto scenario = neural::SimpleScenario();
-    auto economy = scenario.setup();
+    auto scenario = std::make_shared<neural::VariablePopulationScenario>(100, 5);
 
-    for (int t = 0; t < 10; t++) {
-        economy->time_step();
-    }
+    neural::train(scenario, 10, 5);
 
     return 0;
 }

@@ -1,6 +1,7 @@
 #include <math.h>
 #include <assert.h>
 #include "vecToScalar.h"
+#include "constants.h"
 
 
 double min(const Vec& values, unsigned int length, unsigned int* startIdx) {
@@ -103,10 +104,13 @@ double Leontief::df(const Vec& quantities, unsigned int idx) const {
 
 CES::CES(
     double tfp, const Vec& shareParams, double elasticityOfSubstitution
-) : VecToScalar(shareParams.size()), tfp(tfp), shareParams(shareParams), substitutionParam(1 / (1-elasticityOfSubstitution)) {}
+) : VecToScalar(shareParams.size()), tfp(tfp),
+    // shareParams are automatically normalized to sum to 1
+    shareParams(shareParams / shareParams.sum()),
+    substitutionParam(1 / (1-elasticityOfSubstitution)) {}
 
 double CES::get_inner_sum(const Vec& quantities) const {
-    return (shareParams * Eigen::pow(quantities, substitutionParam)).sum();
+    return (shareParams * Eigen::pow(quantities + constants::eps, substitutionParam)).sum();
 }
 
 double CES::f(const Vec& quantities) const {

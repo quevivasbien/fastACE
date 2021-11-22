@@ -141,9 +141,14 @@ bool Economy::time_step() {
 }
 
 
+std::string Economy::get_typename() const {
+    return "Economy";
+}
+
+
 void Economy::print_summary() const {
     std::cout << "\n----------\n"
-        << "Memory ID: " << this << " (Economy)\n"
+        << "Memory ID: " << this << " (" << get_typename() << ")\n"
         << "----------\n";
     std::cout << "Time: " << time << "\n\n";
     std::cout << "Offers:\n";

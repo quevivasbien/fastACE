@@ -47,10 +47,19 @@ void NeuralEconomy::update_agentMap(std::shared_ptr<Agent> agent) {
     std::lock_guard<std::mutex> lock(mutex);
     agentMap[agent] = totalAgents++;
 
-    if (totalAgents >= maxAgents) {
-        std::cout <<
+    if (totalAgents > maxAgents) {
+        pprint_status(
+            1,
+            std::static_pointer_cast<NeuralEconomy>(shared_from_this()),
+            "WARNING: You've EXCEEDED the maximum number of agents allowed for this economy!"
+        );
+    }
+    else if (totalAgents == maxAgents) {
+        pprint_status(
+            2,
+            std::static_pointer_cast<NeuralEconomy>(shared_from_this()),
             "WARNING: You've hit the maximum number of agents allowed for this economy!"
-                << std::endl;
+        );
     }
 }
 
@@ -65,6 +74,10 @@ unsigned int NeuralEconomy::get_totalAgents() const {
 
 unsigned int NeuralEconomy::get_maxAgents() const {
     return maxAgents;
+}
+
+std::string NeuralEconomy::get_typename() const {
+    return "NeuralEconomy";
 }
 
 } // namespace neural

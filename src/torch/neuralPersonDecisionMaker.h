@@ -30,7 +30,9 @@ protected:
 	torch::Tensor myOfferIndices;
 	torch::Tensor myJobOfferIndices;
 
-	unsigned int time;
+	Eigen::ArrayXd utilParams;
+
+	unsigned int time = 0;
 };
 
 } // namespace neural

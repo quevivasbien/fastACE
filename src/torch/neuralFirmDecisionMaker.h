@@ -17,6 +17,8 @@ struct NeuralFirmDecisionMaker : FirmDecisionMaker {
     virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() override;
 
     void confirm_synchronized();
+	void record_state_value();
+	void record_profit();
 	Eigen::ArrayXd get_prodFuncParams() const;
 
 	std::shared_ptr<DecisionNetHandler> guide;
@@ -30,7 +32,10 @@ protected:
     torch::Tensor myOfferIndices;
     torch::Tensor myJobOfferIndices;
 
-    unsigned int time;
+    Eigen::ArrayXd prodFuncParams;
+
+	double last_money;
+    unsigned int time = 0;
 };
 
 } // namespace neural
