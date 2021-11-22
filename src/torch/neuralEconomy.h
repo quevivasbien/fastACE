@@ -295,6 +295,9 @@ struct DecisionNetHandler {
         int offset
     );
 
+    void save_models();
+    void load_models();
+
 };
 
 } // namespace neural

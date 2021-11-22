@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <chrono>
+#include <math.h>
 #include "scenario.h"
 #include "neuralEconomy.h"
 #include "neuralPersonDecisionMaker.h"
@@ -177,17 +178,37 @@ inline void train(
     std::vector<float> losses(numEpisodes);
     for (unsigned int i = 0; i < numEpisodes; i++) {
         economy = scenario->setup();
+
         auto step_time_start = std::chrono::system_clock::now();
         for (unsigned int t = 0; t < episodeLength; t++) {
             economy->time_step();
         }
         auto step_time_end = std::chrono::system_clock::now();
-        losses[i] = scenario->trainer->train_on_episode();
+
+        float loss = scenario->trainer->train_on_episode();
         auto train_time_end = std::chrono::system_clock::now();
-        pprint(1, "Time spent time stepping:");
-        pprint_time_elasped(1, step_time_start, step_time_end);
-        pprint(1, "Time spent time training:");
-        pprint_time_elasped(1, step_time_end, train_time_end);
+
+        pprint(2, "Time spent time stepping:");
+        pprint_time_elasped(2, step_time_start, step_time_end);
+        pprint(2, "Time spent time training:");
+        pprint_time_elasped(2, step_time_end, train_time_end);
+
+        // TODO: Come up with a better checkpointing system
+        if (!isnan(loss)) {
+            scenario->handler->save_models();
+        }
+        else if (i > 0) {
+            pprint(1, "NaN encountered; loading from checkpoint.");
+            scenario->handler->load_models();
+            loss = losses[i-1];
+        }
+        else {
+            // need to start over
+            std::cout << "Training failed on first episode.\n";
+            break;
+        }
+        losses[i] = loss;
+
         if ((updateEveryNEpisodes != 0) && ((i + 1) % updateEveryNEpisodes == 0)) {
             float sum = 0.0;
             for (int j = 0; j < updateEveryNEpisodes; j++) {

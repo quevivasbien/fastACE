@@ -702,4 +702,34 @@ void DecisionNetHandler::record_reward(
 }
 
 
+void DecisionNetHandler::save_models() {
+    torch::save(offerEncoder, "offerEncoder.pt");
+    torch::save(jobOfferEncoder, "jobOfferEncoder.pt");
+	torch::save(purchaseNet, "purchaseNet.pt");
+    torch::save(firmPurchaseNet, "firmPurchaseNet.pt");
+    torch::save(laborSearchNet, "laborSearchNet.pt");
+    torch::save(consumptionNet, "consumptionNet.pt");
+    torch::save(productionNet, "productionNet.pt");
+    torch::save(offerNet, "offerNet.pt");
+    torch::save(jobOfferNet, "jobOfferNet.pt");
+    torch::save(valueNet, "valueNet.pt");
+    torch::save(firmValueNet, "firmValueNet.pt");
+}
+
+
+void DecisionNetHandler::load_models() {
+    torch::load(offerEncoder, "offerEncoder.pt");
+    torch::load(jobOfferEncoder, "jobOfferEncoder.pt");
+	torch::load(purchaseNet, "purchaseNet.pt");
+    torch::load(firmPurchaseNet, "firmPurchaseNet.pt");
+    torch::load(laborSearchNet, "laborSearchNet.pt");
+    torch::load(consumptionNet, "consumptionNet.pt");
+    torch::load(productionNet, "productionNet.pt");
+    torch::load(offerNet, "offerNet.pt");
+    torch::load(jobOfferNet, "jobOfferNet.pt");
+    torch::load(valueNet, "valueNet.pt");
+    torch::load(firmValueNet, "firmValueNet.pt");
+}
+
+
 } // namespace neural

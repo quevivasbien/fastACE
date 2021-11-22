@@ -64,6 +64,19 @@ void flush(std::vector<std::shared_ptr<T>>& offers) {
 }
 
 
+// helper for dividing up agents to be operated on by multiple threads
+inline std::vector<unsigned int> get_indices_for_multithreading(unsigned int numAgents) {
+    unsigned int agentsPerThread = numAgents / constants::numThreads;
+    unsigned int extras = numAgents % constants::numThreads;
+    std::vector<unsigned int> indices(constants::numThreads + 1);
+    indices[0] = 0;
+    for (unsigned int i = 1; i <= constants::numThreads; i++) {
+        indices[i] = indices[i-1] + agentsPerThread + (i <= extras);
+    }
+    return indices;
+}
+
+
 // FUNCTIONS FOR PRINTING BASED ON VALUE OF constants::verbose
 
 // pprint = priority print

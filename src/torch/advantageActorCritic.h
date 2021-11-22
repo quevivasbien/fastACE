@@ -3,10 +3,13 @@
 
 #include <torch/torch.h>
 #include <string>
+#include <thread>
+#include <mutex>
 #include "neuralEconomy.h"
 #include "utilMaxer.h"
 #include "profitMaxer.h"
 #include "util.h"
+#include "constants.h"
 
 
 namespace neural {
@@ -46,6 +49,8 @@ struct AdvantageActorCritic {
     std::shared_ptr<Adam> valueNetOptim;
     std::shared_ptr<Adam> firmValueNetOptim;
 
+    std::mutex myMutex;
+
     torch::Tensor get_loss_from_logProba(
         const std::vector<
             std::unordered_map<std::shared_ptr<Agent>, torch::Tensor>
@@ -58,6 +63,21 @@ struct AdvantageActorCritic {
     torch::Tensor get_loss_for_person_in_episode(std::shared_ptr<Person> person);
 
     torch::Tensor get_loss_for_firm_in_episode(std::shared_ptr<Firm> firm);
+
+    void get_loss_for_persons_multithreaded_(
+        const std::vector<std::shared_ptr<Person>>& persons,
+        unsigned int startIdx,
+        unsigned int endIdx,
+        torch::Tensor* loss
+    );
+    torch::Tensor get_loss_for_persons_multithreaded();
+    void get_loss_for_firms_multithreaded_(
+        const std::vector<std::shared_ptr<Firm>>& firms,
+        unsigned int startIdx,
+        unsigned int endIdx,
+        torch::Tensor* loss
+    );
+    torch::Tensor get_loss_for_firms_multithreaded();
 
     void zero_all_grads();
 

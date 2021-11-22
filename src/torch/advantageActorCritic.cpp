@@ -241,6 +241,90 @@ torch::Tensor AdvantageActorCritic::get_loss_for_firm_in_episode(
     return loss;
 }
 
+void AdvantageActorCritic::get_loss_for_persons_multithreaded_(
+    const std::vector<std::shared_ptr<Person>>& persons,
+    unsigned int startIdx,
+    unsigned int endIdx,
+    torch::Tensor* loss
+) {
+    auto loss_to_add = torch::tensor(0.0);
+    for (unsigned int i = startIdx; i < endIdx; i++) {
+        loss_to_add = loss_to_add + get_loss_for_person_in_episode(persons[i]);
+    }
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        *loss = *loss + loss_to_add;
+    }
+}
+
+void AdvantageActorCritic::get_loss_for_firms_multithreaded_(
+    const std::vector<std::shared_ptr<Firm>>& firms,
+    unsigned int startIdx,
+    unsigned int endIdx,
+    torch::Tensor* loss
+) {
+    auto loss_to_add = torch::tensor(0.0);
+    for (unsigned int i = startIdx; i < endIdx; i++) {
+        loss_to_add = loss_to_add + get_loss_for_firm_in_episode(firms[i]);
+    }
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        *loss = *loss + loss_to_add;
+    }
+}
+
+torch::Tensor AdvantageActorCritic::get_loss_for_persons_multithreaded() {
+    auto loss = torch::tensor(0.0);
+    auto persons = handler->economy->get_persons();
+    std::vector<unsigned int> indices = get_indices_for_multithreading(persons.size());
+    std::vector<std::thread> threads;
+    threads.reserve(constants::numThreads);
+    for (unsigned int i = 0; i < constants::numThreads; i++) {
+        if (indices[i] != indices[i+1]) {
+            threads.push_back(
+                std::thread(
+                    &AdvantageActorCritic::get_loss_for_persons_multithreaded_,
+                    this,
+                    persons,
+                    indices[i],
+                    indices[i+1],
+                    &loss
+                )
+            );
+        }
+    }
+    for (unsigned int i = 0; i < threads.size(); i++) {
+        threads[i].join();
+    }
+    return loss;
+};
+
+torch::Tensor AdvantageActorCritic::get_loss_for_firms_multithreaded() {
+    auto loss = torch::tensor(0.0);
+    auto firms = handler->economy->get_firms();
+    std::vector<unsigned int> indices = get_indices_for_multithreading(firms.size());
+    std::vector<std::thread> threads;
+    threads.reserve(constants::numThreads);
+    for (unsigned int i = 0; i < constants::numThreads; i++) {
+        if (indices[i] != indices[i+1]) {
+            threads.push_back(
+                std::thread(
+                    &AdvantageActorCritic::get_loss_for_firms_multithreaded_,
+                    this,
+                    firms,
+                    indices[i],
+                    indices[i+1],
+                    &loss
+                )
+            );
+        }
+    }
+    for (unsigned int i = 0; i < threads.size(); i++) {
+        threads[i].join();
+    }
+    return loss;
+}
+
 void AdvantageActorCritic::zero_all_grads() {
     purchaseNetOptim->zero_grad();
     firmPurchaseNetOptim->zero_grad();
@@ -268,12 +352,19 @@ void AdvantageActorCritic::all_optims_step() {
 float AdvantageActorCritic::train_on_episode() {
     zero_all_grads();
     auto loss = torch::tensor(0.0);
-    for (auto person : handler->economy->get_persons()) {
-        loss = loss + get_loss_for_person_in_episode(person);
+    if (constants::multithreaded) {
+        loss = loss + get_loss_for_persons_multithreaded();
+        loss = loss + get_loss_for_firms_multithreaded();
     }
-    for (auto firm : handler->economy->get_firms()) {
-        loss = loss + get_loss_for_firm_in_episode(firm);
+    else {
+        for (auto person : handler->economy->get_persons()) {
+            loss = loss + get_loss_for_person_in_episode(person);
+        }
+        for (auto firm : handler->economy->get_firms()) {
+            loss = loss + get_loss_for_firm_in_episode(firm);
+        }
     }
+    
     // normalize loss by number of agents in the economy
     loss = loss / static_cast<long>(handler->economy->get_maxAgents());
     loss.backward();

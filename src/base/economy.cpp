@@ -66,18 +66,10 @@ void run_agents_(
 template <typename A>
 void run_agents(const std::vector<std::shared_ptr<A>>* const agents) {
     // runs time_step for a vector of agents, multithreaded
-    unsigned int numAgents = agents->size();
-    auto numThreads = std::thread::hardware_concurrency();
-    unsigned int agentsPerThread = numAgents / numThreads;
-    unsigned int extras = numAgents % numThreads;
-    std::vector<unsigned int> indices(numThreads + 1);
-    indices[0] = 0;
-    for (unsigned int i = 1; i <= numThreads; i++) {
-        indices[i] = indices[i-1] + agentsPerThread + (i <= extras);
-    }
+    std::vector<unsigned int> indices = get_indices_for_multithreading(agents->size());
     std::vector<std::thread> threads;
-    threads.reserve(numThreads);
-    for (unsigned int i = 0; i < numThreads; i++) {
+    threads.reserve(constants::numThreads);
+    for (unsigned int i = 0; i < constants::numThreads; i++) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
