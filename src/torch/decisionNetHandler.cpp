@@ -1,4 +1,5 @@
 #include "neuralEconomy.h"
+#include "constants.h"
 
 // TODO: include the number of currently available offers as a parameter
 
@@ -24,15 +25,17 @@ Eigen::ArrayXd torchToEigen(torch::Tensor tensor) {
 }
 
 std::pair<torch::Tensor, torch::Tensor> sample_normal(torch::Tensor params) {
+    // std::cout << "params: " << params << std::endl;
     auto mu = params.index({"...", 0});
-    auto sigma = params.index({"...", 1});
+    auto sigma = torch::exp(params.index({"...", 1}));
     int size = (params.dim() > 1) ? params.size(-2) : 1;
     auto normal_vals = torch::randn(size) * sigma + mu;
     auto log_proba = -0.5 * torch::pow((normal_vals - mu) / sigma, 2) - torch::log(sigma * SQRT2PI);
+    // std::cout << "logProba: " << log_proba << std::endl;
     return std::make_pair(normal_vals, log_proba);
 }
 
-std::pair<torch::Tensor, torch::Tensor> sample_sigmoidNormal(torch::Tensor params) {
+std::pair<torch::Tensor, torch::Tensor> sample_logitNormal(torch::Tensor params) {
     auto pair = sample_normal(params);
     return std::make_pair(torch::sigmoid(pair.first), pair.second);
 }
@@ -269,13 +272,36 @@ void DecisionNetHandler::push_back_memory() {
 
 
 void DecisionNetHandler::time_step() {
-    std::lock_guard<std::mutex> lock(myMutex);
     update_encodedOffers();
     update_encodedJobOffers();
     if (time >= 0) {
         push_back_memory();
     }
     time++;
+}
+
+void DecisionNetHandler::synchronize_time(std::shared_ptr<Agent> caller) {
+    std::lock_guard<std::mutex> lock(myMutex);
+    if (caller->get_time() > time) {
+        time_step();
+    }
+}
+
+void DecisionNetHandler::reset(std::shared_ptr<NeuralEconomy> newEconomy) {
+    economy = newEconomy;
+    time = -1;
+
+    purchaseNetLogProba = {};
+    firmPurchaseNetLogProba = {};
+    laborSearchNetLogProba = {};
+    consumptionNetLogProba = {};
+    productionNetLogProba = {};
+    offerNetLogProba = {};
+    jobOfferNetLogProba = {};
+    values = {};
+    rewards = {};
+
+    time_step();
 }
 
 torch::Tensor DecisionNetHandler::generate_offerIndices() {
@@ -350,16 +376,21 @@ std::vector<Order<Offer>> DecisionNetHandler::get_offers_to_request(
     const Eigen::ArrayXd& inventory
 ) {
     if (offerIndices.size(0) == 0) {
+        std::lock_guard<std::mutex> lock(myMutex);
         purchaseNetLogProba[time-1][caller] = torch::tensor(0.0); // do I need requires_grad(true) here?
         return {};
     }
+    // std::cout << "using purchaseNet" << std::endl;
     auto probas = get_purchase_probas(
         offerIndices, utilParams, budget, labor, inventory, purchaseNet, encodedOffers
     );
 
     auto request_proba_pair = create_offer_requests(offerIndices, probas);
-    std::cout << "Recording logProba at time " << time << " for agent " << caller << std::endl;
-    purchaseNetLogProba[time-1][caller] = request_proba_pair.second;
+    // std::cout << "Recording logProba at time " << time << " for agent " << caller << std::endl;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        purchaseNetLogProba[time-1][caller] = request_proba_pair.second;
+    }
     return request_proba_pair.first;
 }
 
@@ -373,15 +404,20 @@ std::vector<Order<Offer>> DecisionNetHandler::firm_get_offers_to_request(
     const Eigen::ArrayXd& inventory
 ) {
     if (offerIndices.size(0) == 0) {
+        std::lock_guard<std::mutex> lock(myMutex);
         firmPurchaseNetLogProba[time-1][caller] = torch::tensor(0.0); // do I need requires_grad(true) here?
         return {};
     }
+    // std::cout << "using firmPurchaseNet" << std::endl;
     auto probas = get_purchase_probas(
         offerIndices, prodFuncParams, budget, labor, inventory, firmPurchaseNet, encodedOffers
     );
 
     auto request_proba_pair = create_offer_requests(offerIndices, probas);
-    firmPurchaseNetLogProba[time-1][caller] = request_proba_pair.second;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        firmPurchaseNetLogProba[time-1][caller] = request_proba_pair.second;
+    }
     return request_proba_pair.first;
 }
 
@@ -417,16 +453,21 @@ std::vector<Order<JobOffer>> DecisionNetHandler::get_joboffers_to_request(
     const Eigen::ArrayXd& inventory
 ) {
     if (jobOfferIndices.size(0) == 0) {
+        std::lock_guard<std::mutex> lock(myMutex);
         laborSearchNetLogProba[time-1][caller] = torch::tensor(0.0); // do I need requires_grad(true) here?
         return {};
     }
 
+    // std::cout << "using laborSearchNet" << std::endl;
     auto probas = get_job_probas(
         jobOfferIndices, utilParams, money, labor, inventory, laborSearchNet, encodedJobOffers
     );
 
     auto request_proba_pair = create_joboffer_requests(jobOfferIndices, probas);
-    laborSearchNetLogProba[time-1][caller] = request_proba_pair.second;
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        laborSearchNetLogProba[time-1][caller] = request_proba_pair.second;
+    }
     return request_proba_pair.first;
 }
 
@@ -438,14 +479,18 @@ Eigen::ArrayXd DecisionNetHandler::get_consumption_proportions(
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    // std::cout << "using consumptionNet" << std::endl;
     auto utilParams_ = eigenToTorch(utilParams);
     auto money_ = torch::tensor({money});
     auto labor_ = torch::tensor({labor});
     auto inventory_ = eigenToTorch(inventory);
-    auto consumption_pair = sample_sigmoidNormal(
+    auto consumption_pair = sample_logitNormal(
         consumptionNet->forward(utilParams_, money_, labor_, inventory_)
     );
-    consumptionNetLogProba[time-1][caller] = torch::sum(consumption_pair.second);
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        consumptionNetLogProba[time-1][caller] = torch::sum(consumption_pair.second);
+    }
     return torchToEigen(consumption_pair.first);
 }
 
@@ -457,14 +502,18 @@ Eigen::ArrayXd DecisionNetHandler::get_production_proportions(
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    // std::cout << "using productionNet" << std::endl;
     auto prodFuncParams_ = eigenToTorch(prodFuncParams);
     auto money_ = torch::tensor({money});
     auto labor_ = torch::tensor({labor});
     auto inventory_ = eigenToTorch(inventory);
-    auto production_pair = sample_sigmoidNormal(
+    auto production_pair = sample_logitNormal(
         productionNet->forward(prodFuncParams_, money_, labor_, inventory_)
     );
-    productionNetLogProba[time-1][caller] = torch::sum(production_pair.second);
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        productionNetLogProba[time-1][caller] = torch::sum(production_pair.second);
+    }
     return torchToEigen(production_pair.first);
 }
 
@@ -503,6 +552,7 @@ std::pair<Eigen::ArrayXd, Eigen::ArrayXd> DecisionNetHandler::choose_offers(
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    // std::cout << "using offerNet" << std::endl;
     auto encodedOffers = getEncodedOffersFromIndices(offerIndices);
     auto netOutput = offerNet->forward(
         encodedOffers,
@@ -513,17 +563,20 @@ std::pair<Eigen::ArrayXd, Eigen::ArrayXd> DecisionNetHandler::choose_offers(
     );
 
     auto amounts_params = netOutput.index({"...", torch::tensor({0, 1})});
-    auto amount_pair = sample_sigmoidNormal(amounts_params);
+    auto amount_pair = sample_logitNormal(amounts_params);
     auto amounts = torchToEigen(amount_pair.first) * inventory;
 
     auto prices_params = netOutput.index({"...", torch::tensor({2, 3})});
     auto price_pair = sample_logNormal(prices_params);
     auto prices = torchToEigen(price_pair.first);
 
-    offerNetLogProba[time-1][caller] = (
-        torch::sum(amount_pair.second)
-        + torch::sum(price_pair.second)
-    );
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        offerNetLogProba[time-1][caller] = (
+            torch::sum(amount_pair.second)
+            + torch::sum(price_pair.second)
+        );
+    }
 
     return std::make_pair(amounts, prices);
 }
@@ -537,6 +590,7 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     double labor,
     const Eigen::ArrayXd& inventory
 ) {
+    // std::cout << "using jobOfferNet" << std::endl;
     auto encodedOffers = getEncodedJobOffersFromIndices(offerIndices);
     auto netOutput = jobOfferNet->forward(
         encodedOffers,
@@ -553,8 +607,16 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     auto wage_params = netOutput.index({"...", torch::tensor({2, 3})});
     auto wage_pair = sample_logNormal(wage_params);
     double wage = wage_pair.first.item<double>();
+    // clip wage to avoid inf values
+    if (wage > constants::largeNumber) {
+        wage = constants::largeNumber;
+        pprint(2, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
+    }
 
-    jobOfferNetLogProba[time-1][caller] = (labor_pair.second + wage_pair.second)[0];
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        jobOfferNetLogProba[time-1][caller] = (labor_pair.second + wage_pair.second)[0];
+    }
 
     return std::make_pair(totalLabor, wage);
 }
@@ -575,14 +637,17 @@ void DecisionNetHandler::record_value(
     auto money_ = torch::tensor({money});
     auto labor_ = torch::tensor({labor});
     auto inventory_ = eigenToTorch(inventory);
-    values[time-1][caller] = valueNet->forward(
-        offerEncodings,
-        jobOfferEncodings,
-        utilParams_,
-        money_,
-        labor_,
-        inventory_
-    );
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        values[time-1][caller] = valueNet->forward(
+            offerEncodings,
+            jobOfferEncodings,
+            utilParams_,
+            money_,
+            labor_,
+            inventory_
+        );
+    }
 }
 
 
@@ -601,14 +666,17 @@ void DecisionNetHandler::firm_record_value(
     auto money_ = torch::tensor({money});
     auto labor_ = torch::tensor({labor});
     auto inventory_ = eigenToTorch(inventory);
-    values[time-1][caller] = firmValueNet->forward(
-        offerEncodings,
-        jobOfferEncodings,
-        prodFuncParams_,
-        money_,
-        labor_,
-        inventory_
-    );
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        values[time-1][caller] = firmValueNet->forward(
+            offerEncodings,
+            jobOfferEncodings,
+            prodFuncParams_,
+            money_,
+            labor_,
+            inventory_
+        );
+    }
 }
 
 
@@ -616,7 +684,21 @@ void DecisionNetHandler::record_reward(
     std::shared_ptr<Agent> caller,
     double reward
 ) {
-    rewards[time-1][caller] = torch::tensor(reward);
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        rewards[time-1][caller] = torch::tensor(reward);
+    }
+}
+
+void DecisionNetHandler::record_reward(
+    std::shared_ptr<Agent> caller,
+    double reward,
+    int offset
+) {
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        rewards[time - 1 - offset][caller] = torch::tensor(reward);
+    }
 }
 
 

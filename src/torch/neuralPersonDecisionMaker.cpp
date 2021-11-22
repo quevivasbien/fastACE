@@ -13,15 +13,13 @@ NeuralPersonDecisionMaker::NeuralPersonDecisionMaker(
 
 
 void NeuralPersonDecisionMaker::confirm_synchronized() {
-    if (parent->get_time() > guide->time) {
-        guide->time_step();
-    }
+    guide->synchronize_time(parent);
     if (parent->get_time() > time) {
-        time++;
         utilParams = get_utilParams();
         myOfferIndices = guide->generate_offerIndices();
         myJobOfferIndices = guide->generate_jobOfferIndices();
         record_state_value();
+        time++;
     }
 }
 

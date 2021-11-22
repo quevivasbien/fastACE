@@ -103,7 +103,8 @@ public:
 
     void add_offer(std::shared_ptr<const Offer> offer);
     void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
-
+    
+    virtual std::string get_typename() const;
     virtual void print_summary() const;
 
 protected:

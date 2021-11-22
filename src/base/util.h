@@ -64,9 +64,18 @@ void flush(std::vector<std::shared_ptr<T>>& offers) {
 }
 
 
+// FUNCTIONS FOR PRINTING BASED ON VALUE OF constants::verbose
+
+// pprint = priority print
+inline void pprint(unsigned int priority, const std::string& message) {
+    if (constants::verbose >= priority) {
+        std::cout << message << std::endl;
+    }
+}
+
 template <typename ... Args>
-void print(Args&& ... args) {
-    if (constants::verbose > 0) {
+void pprint(unsigned int priority, Args&& ... args) {
+    if (constants::verbose >= priority) {
         for (auto arg : {args...}) {
     		std::cout << arg << ' ';
     	}
@@ -74,30 +83,64 @@ void print(Args&& ... args) {
     }
 }
 
+// print if verbose > 0
+inline void print(const std::string& message) {
+    pprint(1, message);
+}
+
 template <typename ... Args>
-void print(unsigned int priority, Args&& ... args) {
+void print(Args&& ... args) {
+    pprint(1, {args ...});
+}
+
+
+template <typename T>
+void pprint_status(
+    unsigned int priority,
+    T* origin,
+    const std::string& status
+) {
     if (constants::verbose >= priority) {
-        print({args...});
-    }
-}
-
-
-template <typename T>
-inline void print_status(T* origin, std::string status) {
-    if (constants::verbose >= 2) {
         std::cout << origin
             << " (" << origin->get_typename() << ") : "
             << status << '\n';
     }
 }
 
-
 template <typename T>
-inline void print_status(std::shared_ptr<T> origin, std::string status) {
-    if (constants::verbose >= 2) {
+void pprint_status(
+    unsigned int priority,
+    std::shared_ptr<T> origin,
+    const std::string& status
+) {
+    if (constants::verbose >= priority) {
         std::cout << origin
             << " (" << origin->get_typename() << ") : "
             << status << '\n';
+    }
+}
+
+// print status if verbose >= 2
+template <typename T>
+void print_status(T* origin, const std::string& status) {
+    pprint_status(2, origin, status);
+}
+
+
+template <typename T>
+void print_status(std::shared_ptr<T> origin, const std::string& status) {
+    pprint_status(2, origin, status);
+}
+
+
+inline void pprint_time_elasped(
+    unsigned int priority,
+    std::chrono::time_point<std::chrono::system_clock> start_time,
+    std::chrono::time_point<std::chrono::system_clock> end_time
+) {
+    std::chrono::duration<double> elasped_seconds = end_time - start_time;
+    if (constants::verbose >= priority) {
+        std::cout << elasped_seconds.count() << "s" << std::endl;
     }
 }
 

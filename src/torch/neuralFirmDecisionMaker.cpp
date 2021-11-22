@@ -22,8 +22,11 @@ void NeuralFirmDecisionMaker::confirm_synchronized() {
         guide->time_step();
     }
     if (parent->get_time() > time) {
+        prodFuncParams = get_prodFuncParams();
         myOfferIndices = guide->firm_generate_offerIndices();
         myJobOfferIndices = guide->firm_generate_jobOfferIndices();
+        record_state_value();
+        record_profit();
         time++;
     }
 }
@@ -41,6 +44,26 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::get_prodFuncParams() const {
     return Eigen::Map<Eigen::ArrayXd>(prodFuncParams.data(), prodFuncParams.size());
 }
 
+void NeuralFirmDecisionMaker::record_state_value() {
+    guide->firm_record_value(
+        parent,
+        myOfferIndices,
+        myJobOfferIndices,
+        prodFuncParams,
+        parent->get_money(),
+        parent->get_laborHired(),
+        parent->get_inventory()
+    );
+}
+
+void NeuralFirmDecisionMaker::record_profit() {
+    if (time > 0) {
+        double profit = parent->get_money() - last_money;
+        guide->record_reward(parent, profit, 1);
+    }
+    last_money = parent->get_money();
+}
+
 
 std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
     confirm_synchronized();
@@ -49,7 +72,7 @@ std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
     return guide->firm_get_offers_to_request(
         parent,
         myOfferIndices,
-        get_prodFuncParams(),
+        prodFuncParams,
         parent->get_money(),
         parent->get_laborHired(),
         parent->get_inventory()
@@ -62,7 +85,7 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::choose_production_inputs() {
 
     return parent->get_inventory() * guide->get_production_proportions(
         parent,
-        get_prodFuncParams(),
+        prodFuncParams,
         parent->get_money(),
         parent->get_laborHired(),
         parent->get_inventory()
@@ -76,7 +99,7 @@ std::vector<std::shared_ptr<Offer>> NeuralFirmDecisionMaker::choose_good_offers(
     auto amt_price_pair = guide->choose_offers(
         parent,
         myOfferIndices,
-        get_prodFuncParams(),
+        prodFuncParams,
         parent->get_money(),
         parent->get_laborHired(),
         parent->get_inventory()
@@ -111,7 +134,7 @@ std::vector<std::shared_ptr<JobOffer>> NeuralFirmDecisionMaker::choose_job_offer
     auto labor_wage_pair = guide->choose_job_offers(
         parent,
         myJobOfferIndices,
-        get_prodFuncParams(),
+        prodFuncParams,
         parent->get_money(),
         parent->get_laborHired(),
         parent->get_inventory()

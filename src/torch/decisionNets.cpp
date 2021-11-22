@@ -39,12 +39,14 @@ OfferEncoder::OfferEncoder(
 torch::Tensor OfferEncoder::forward(torch::Tensor x) {
 	// todo: check that stack size is correct
 	// first step is to reduce number of features
+	// std::cout << "input: " << x << std::endl;
 	x = torch::relu(dimReduce->forward(x));
 	// next we go through a couple of linear layers
 	x = x + torch::relu(stackedForward1->forward(x));
 	x = x + torch::relu(stackedForward2->forward(x));
 	// next we reduce to the encoding size and return
 	x = torch::relu(last->forward(x));
+	// std::cout << "output: " << x << std::endl;
 	return x;
 }
 
@@ -244,14 +246,17 @@ torch::Tensor JobOfferNet::forward(
 ) {
 	// first we get a single value for every element in the stack
 	torch::Tensor x = torch::tanh(flatten->forward(offerEncodings).squeeze(-1));
+	// std::cout << "after flatten: " << x << std::endl;
 	// we can now add in the other features
 	x = torch::cat({x, utilParams, money, labor, inventory}, -1);
+	// std::cout << "after cat: " << x << std::endl;
 	// last we do a few basic linear layers
 	x = torch::relu(flatForward1->forward(x));
 	x = x + torch::relu(flatForward2->forward(x));
 	x = x + torch::relu(flatForward3->forward(x));
+	// std::cout << "after flatForwards: " << x << std::endl;
 	// compute final outputs
-	return torch::exp(last->forward(x));
+	return last->forward(x);
 }
 
 

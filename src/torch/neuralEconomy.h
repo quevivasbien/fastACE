@@ -56,6 +56,8 @@ public:
     unsigned int get_totalAgents() const;
     unsigned int get_maxAgents() const;
 
+    virtual std::string get_typename() const;
+
 protected:
     NeuralEconomy(std::vector<std::string> goods, unsigned int maxAgents);
 
@@ -67,18 +69,20 @@ protected:
 };
 
 
+// FROM HERE ON ARE DEFINED IN decisionNetHandler.cpp
+
 torch::Tensor eigenToTorch(Eigen::ArrayXd eigenArray);
 
 Eigen::ArrayXd torchToEigen(torch::Tensor tensor);
 
 // params is [batchsize] x n x 2 tensor
-// cols are {mu, sigma} for each of n obs
+// cols are {mu, logSigma} for each of n obs (note *log* sigma; sigma = exp(logSigma))
 // returns pair where first value is n sampled values from normal dist
 // and second value is log probas of those values
 std::pair<torch::Tensor, torch::Tensor> sample_normal(torch::Tensor params);
 
 // same as sample_normal, but applies sigmoid function to output values
-std::pair<torch::Tensor, torch::Tensor> sample_sigmoidNormal(torch::Tensor params);
+std::pair<torch::Tensor, torch::Tensor> sample_logitNormal(torch::Tensor params);
 
 // same as sample_normal, but applies exp function to output values
 std::pair<torch::Tensor, torch::Tensor> sample_logNormal(torch::Tensor params);
@@ -171,6 +175,10 @@ struct DecisionNetHandler {
     void push_back_memory();
 
     void time_step();
+
+    void synchronize_time(std::shared_ptr<Agent> caller);
+
+    void reset(std::shared_ptr<NeuralEconomy> newEconomy);
 
     torch::Tensor generate_offerIndices();
     torch::Tensor generate_jobOfferIndices();
@@ -279,6 +287,12 @@ struct DecisionNetHandler {
     void record_reward(
         std::shared_ptr<Agent> caller,
         double reward
+    );
+
+    void record_reward(
+        std::shared_ptr<Agent> caller,
+        double reward,
+        int offset
     );
 
 };
