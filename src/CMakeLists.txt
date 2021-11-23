@@ -1,6 +1,6 @@
 add_executable(main main.cpp)
 
-add_library(lib "")
+add_library(lib SHARED "")
 
 add_subdirectory(base)
 add_subdirectory(persons)
@@ -23,3 +23,7 @@ target_link_libraries(lib PUBLIC Eigen3::Eigen)
 
 find_package(Torch REQUIRED)
 target_link_libraries(lib PUBLIC "${TORCH_LIBRARIES}")
+
+
+add_library(pybindings SHARED "pybindings.cpp")
+target_link_libraries(pybindings PRIVATE lib)

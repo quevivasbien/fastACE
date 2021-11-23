@@ -58,7 +58,7 @@ bool Firm::review_jobOffer_response(
     std::shared_ptr<Person> responder,
     std::shared_ptr<const JobOffer> jobOffer
 ) {
-    std::shared_ptr<JobOffer> myCopy;
+    std::shared_ptr<JobOffer> myCopy = nullptr;
     {
         std::lock_guard<std::mutex> lock(myMutex);
         if (!jobOffer->is_available()) {

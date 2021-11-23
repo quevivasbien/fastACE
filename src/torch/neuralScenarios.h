@@ -167,7 +167,7 @@ struct VariablePopulationScenario : NeuralScenario {
 };
 
 
-inline void train(
+inline std::vector<float> train(
     std::shared_ptr<NeuralScenario> scenario,
     unsigned int numEpisodes,
     unsigned int episodeLength,
@@ -224,9 +224,11 @@ inline void train(
     auto end = std::chrono::system_clock::now();
     pprint(1, "Total time:");
     pprint_time_elasped(1, start, end);
+
+    return losses;
 }
 
-inline void train(
+inline std::vector<float> train(
     std::shared_ptr<NeuralScenario> scenario,
     unsigned int numEpisodes,
     unsigned int episodeLength
@@ -235,7 +237,7 @@ inline void train(
     if (updateEveryNEpisodes == 0) {
         updateEveryNEpisodes++;
     }
-    train(scenario, numEpisodes, episodeLength, updateEveryNEpisodes);
+    return train(scenario, numEpisodes, episodeLength, updateEveryNEpisodes);
 }
 
 } // namespace neural

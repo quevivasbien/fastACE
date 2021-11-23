@@ -136,13 +136,13 @@ void pprint_status(
 // print status if verbose >= 2
 template <typename T>
 void print_status(T* origin, const std::string& status) {
-    pprint_status(2, origin, status);
+    pprint_status(3, origin, status);
 }
 
 
 template <typename T>
 void print_status(std::shared_ptr<T> origin, const std::string& status) {
-    pprint_status(2, origin, status);
+    pprint_status(3, origin, status);
 }
 
 

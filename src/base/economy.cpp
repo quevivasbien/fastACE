@@ -118,10 +118,10 @@ bool Economy::time_step() {
     }
     flush<const Offer>(market);
     flush<const JobOffer>(jobMarket);
-    if (constants::verbose >= 2) {
+    if (constants::verbose >= 3) {
         print_summary();
     }
-    if (constants::verbose >= 3) {
+    if (constants::verbose >= 4) {
         for (auto person : persons) {
             person->print_summary();
         }

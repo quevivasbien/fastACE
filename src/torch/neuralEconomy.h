@@ -167,6 +167,15 @@ struct DecisionNetHandler {
     int time = -1;
 
     std::mutex myMutex;
+    std::mutex purchaseNetMutex;
+    std::mutex firmPurchaseNetMutex;
+    std::mutex laborSearchNetMutex;
+    std::mutex consumptionNetMutex;
+    std::mutex productionNetMutex;
+    std::mutex offerNetMutex;
+    std::mutex jobOfferNetMutex;
+    std::mutex valueNetMutex;
+    std::mutex firmValueNetMutex;
 
 	void update_encodedOffers();
 

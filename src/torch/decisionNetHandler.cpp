@@ -376,8 +376,8 @@ std::vector<Order<Offer>> DecisionNetHandler::get_offers_to_request(
     const Eigen::ArrayXd& inventory
 ) {
     if (offerIndices.size(0) == 0) {
-        std::lock_guard<std::mutex> lock(myMutex);
-        purchaseNetLogProba[time-1][caller] = torch::tensor(0.0); // do I need requires_grad(true) here?
+        std::lock_guard<std::mutex> lock(purchaseNetMutex);
+        purchaseNetLogProba[time-1][caller] = torch::tensor(0.0);
         return {};
     }
     // std::cout << "using purchaseNet" << std::endl;
@@ -388,7 +388,7 @@ std::vector<Order<Offer>> DecisionNetHandler::get_offers_to_request(
     auto request_proba_pair = create_offer_requests(offerIndices, probas);
     // std::cout << "Recording logProba at time " << time << " for agent " << caller << std::endl;
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(purchaseNetMutex);
         purchaseNetLogProba[time-1][caller] = request_proba_pair.second;
     }
     return request_proba_pair.first;
@@ -404,8 +404,8 @@ std::vector<Order<Offer>> DecisionNetHandler::firm_get_offers_to_request(
     const Eigen::ArrayXd& inventory
 ) {
     if (offerIndices.size(0) == 0) {
-        std::lock_guard<std::mutex> lock(myMutex);
-        firmPurchaseNetLogProba[time-1][caller] = torch::tensor(0.0); // do I need requires_grad(true) here?
+        std::lock_guard<std::mutex> lock(firmPurchaseNetMutex);
+        firmPurchaseNetLogProba[time-1][caller] = torch::tensor(0.0);
         return {};
     }
     // std::cout << "using firmPurchaseNet" << std::endl;
@@ -415,7 +415,7 @@ std::vector<Order<Offer>> DecisionNetHandler::firm_get_offers_to_request(
 
     auto request_proba_pair = create_offer_requests(offerIndices, probas);
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(firmPurchaseNetMutex);
         firmPurchaseNetLogProba[time-1][caller] = request_proba_pair.second;
     }
     return request_proba_pair.first;
@@ -453,7 +453,7 @@ std::vector<Order<JobOffer>> DecisionNetHandler::get_joboffers_to_request(
     const Eigen::ArrayXd& inventory
 ) {
     if (jobOfferIndices.size(0) == 0) {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(laborSearchNetMutex);
         laborSearchNetLogProba[time-1][caller] = torch::tensor(0.0); // do I need requires_grad(true) here?
         return {};
     }
@@ -465,7 +465,7 @@ std::vector<Order<JobOffer>> DecisionNetHandler::get_joboffers_to_request(
 
     auto request_proba_pair = create_joboffer_requests(jobOfferIndices, probas);
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(laborSearchNetMutex);
         laborSearchNetLogProba[time-1][caller] = request_proba_pair.second;
     }
     return request_proba_pair.first;
@@ -488,7 +488,7 @@ Eigen::ArrayXd DecisionNetHandler::get_consumption_proportions(
         consumptionNet->forward(utilParams_, money_, labor_, inventory_)
     );
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(consumptionNetMutex);
         consumptionNetLogProba[time-1][caller] = torch::sum(consumption_pair.second);
     }
     return torchToEigen(consumption_pair.first);
@@ -511,7 +511,7 @@ Eigen::ArrayXd DecisionNetHandler::get_production_proportions(
         productionNet->forward(prodFuncParams_, money_, labor_, inventory_)
     );
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(productionNetMutex);
         productionNetLogProba[time-1][caller] = torch::sum(production_pair.second);
     }
     return torchToEigen(production_pair.first);
@@ -571,7 +571,7 @@ std::pair<Eigen::ArrayXd, Eigen::ArrayXd> DecisionNetHandler::choose_offers(
     auto prices = torchToEigen(price_pair.first);
 
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(offerNetMutex);
         offerNetLogProba[time-1][caller] = (
             torch::sum(amount_pair.second)
             + torch::sum(price_pair.second)
@@ -614,7 +614,7 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     }
 
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(jobOfferNetMutex);
         jobOfferNetLogProba[time-1][caller] = (labor_pair.second + wage_pair.second)[0];
     }
 
@@ -638,7 +638,7 @@ void DecisionNetHandler::record_value(
     auto labor_ = torch::tensor({labor});
     auto inventory_ = eigenToTorch(inventory);
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(valueNetMutex);
         values[time-1][caller] = valueNet->forward(
             offerEncodings,
             jobOfferEncodings,
@@ -667,7 +667,7 @@ void DecisionNetHandler::firm_record_value(
     auto labor_ = torch::tensor({labor});
     auto inventory_ = eigenToTorch(inventory);
     {
-        std::lock_guard<std::mutex> lock(myMutex);
+        std::lock_guard<std::mutex> lock(firmValueNetMutex);
         values[time-1][caller] = firmValueNet->forward(
             offerEncodings,
             jobOfferEncodings,
