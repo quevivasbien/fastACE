@@ -6,14 +6,13 @@
 #include <math.h>
 #include "scenario.h"
 #include "neuralEconomy.h"
-#include "neuralPersonDecisionMaker.h"
-#include "neuralFirmDecisionMaker.h"
 #include "utilMaxer.h"
 #include "profitMaxer.h"
 #include "advantageActorCritic.h"
 #include "util.h"
 #include "constants.h"
 
+// TODO: Figure out why we get seg faults when n epochs = 2!
 
 namespace neural {
 
@@ -169,9 +168,11 @@ struct VariablePopulationScenario : NeuralScenario {
 
 inline std::vector<float> train(
     std::shared_ptr<NeuralScenario> scenario,
+    float initialLR,
     unsigned int numEpisodes,
     unsigned int episodeLength,
-    unsigned int updateEveryNEpisodes
+    unsigned int updateEveryNEpisodes,
+    unsigned int checkpointEveryNEpisodes
 ) {
     auto start = std::chrono::system_clock::now();
     std::shared_ptr<Economy> economy;
@@ -193,19 +194,22 @@ inline std::vector<float> train(
         pprint(2, "Time spent time training:");
         pprint_time_elasped(2, step_time_end, train_time_end);
 
-        // TODO: Come up with a better checkpointing system
-        if (!isnan(loss)) {
+        if (isnan(loss)) {
+            if (i >= checkpointEveryNEpisodes) {
+                pprint(
+                    1,
+                    "In episode " + std::to_string(i+1) + ": NaN encountered; reverting to last checkpoint."
+                );
+                scenario->handler->load_models();
+                loss = losses[i-1];
+            }
+            else {
+                std::cout << "Training failed before first checkpoint.\n";
+                break;
+            }
+        }
+        else if (((i - 1) % checkpointEveryNEpisodes == 0) || (i == numEpisodes - 1)) {
             scenario->handler->save_models();
-        }
-        else if (i > 0) {
-            pprint(1, "NaN encountered; loading from checkpoint.");
-            scenario->handler->load_models();
-            loss = losses[i-1];
-        }
-        else {
-            // need to start over
-            std::cout << "Training failed on first episode.\n";
-            break;
         }
         losses[i] = loss;
 
@@ -230,14 +234,23 @@ inline std::vector<float> train(
 
 inline std::vector<float> train(
     std::shared_ptr<NeuralScenario> scenario,
+    float initialLR,
     unsigned int numEpisodes,
     unsigned int episodeLength
 ) {
-    unsigned int updateEveryNEpisodes = numEpisodes / 10;
+    unsigned int updateEveryNEpisodes = 10;
+    unsigned int checkpointEveryNEpisodes = 10;
     if (updateEveryNEpisodes == 0) {
         updateEveryNEpisodes++;
     }
-    return train(scenario, numEpisodes, episodeLength, updateEveryNEpisodes);
+    return train(
+        scenario,
+        initialLR,
+        numEpisodes,
+        episodeLength,
+        updateEveryNEpisodes,
+        checkpointEveryNEpisodes
+    );
 }
 
 } // namespace neural

@@ -12,6 +12,8 @@
 #include <utility>
 #include <Eigen/Dense>
 #include "base.h"
+#include "utilMaxer.h"
+#include "profitMaxer.h"
 #include "decisionNets.h"
 
 
@@ -22,7 +24,9 @@ const double SQRT2PI = 2 / (M_2_SQRTPI * M_SQRT1_2);
 
 const int DEFAULT_STACK_SIZE = 10;
 const int DEFAULT_ENCODING_SIZE = 10;
-const int DEFAULT_HIDDEN_SIZE = 30;
+const int DEFAULT_HIDDEN_SIZE = 100;
+const int DEFAULT_N_HIDDEN = 6;
+const int DEFAULT_N_HIDDEN_SMALL = 3;
 
 // forward declaration
 struct DecisionNetHandler;
@@ -66,6 +70,71 @@ protected:
     std::unordered_map<std::shared_ptr<Agent>, unsigned int> agentMap;
     unsigned int totalAgents = 0;
     unsigned int maxAgents;
+};
+
+
+// Defined in neuralPersonDecisionMaker.cpp
+
+struct NeuralPersonDecisionMaker : PersonDecisionMaker {
+
+	NeuralPersonDecisionMaker(std::shared_ptr<DecisionNetHandler> guide);
+
+	virtual std::vector<Order<Offer>> choose_goods() override;
+	virtual std::vector<Order<JobOffer>> choose_jobs() override;
+	virtual Eigen::ArrayXd choose_goods_to_consume() override;
+
+	std::shared_ptr<DecisionNetHandler> guide;
+
+protected:
+	NeuralPersonDecisionMaker(
+    	std::shared_ptr<UtilMaxer> parent,
+    	std::shared_ptr<DecisionNetHandler> guide
+	);
+
+	void confirm_synchronized();
+	void record_state_value();
+	Eigen::ArrayXd get_utilParams() const;
+
+	torch::Tensor myOfferIndices;
+	torch::Tensor myJobOfferIndices;
+
+	Eigen::ArrayXd utilParams;
+
+	unsigned int time = 0;
+};
+
+
+// Defined in neuralFirmDecisionMaker.cpp
+
+struct NeuralFirmDecisionMaker : FirmDecisionMaker {
+
+    NeuralFirmDecisionMaker(std::shared_ptr<DecisionNetHandler> guide);
+
+    virtual Eigen::ArrayXd choose_production_inputs() override;
+    virtual std::vector<std::shared_ptr<Offer>> choose_good_offers() override;
+    virtual std::vector<Order<Offer>> choose_goods() override;
+    virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() override;
+
+	std::shared_ptr<DecisionNetHandler> guide;
+
+protected:
+    NeuralFirmDecisionMaker(
+        std::shared_ptr<ProfitMaxer> parent,
+        std::shared_ptr<DecisionNetHandler> guide
+    );
+
+    void confirm_synchronized();
+	void record_state_value();
+	void record_profit();
+	Eigen::ArrayXd get_prodFuncParams() const;
+
+    torch::Tensor myOfferIndices;
+    torch::Tensor myJobOfferIndices;
+
+    Eigen::ArrayXd prodFuncParams;
+
+	double last_money;
+    unsigned int time = 0;
 };
 
 

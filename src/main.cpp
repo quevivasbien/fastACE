@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 
     auto scenario = std::make_shared<neural::VariablePopulationScenario>(numPersons, numFirms);
 
-    neural::train(scenario, numEpisodes, episodeLength);
+    neural::train(scenario, neural::DEFAULT_LEARNING_RATE, numEpisodes, episodeLength);
 
     return 0;
 }

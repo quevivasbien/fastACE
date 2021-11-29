@@ -8,6 +8,7 @@ extern "C" {
         float* output,
         unsigned int numPersons,
         unsigned int numFirms,
+        float initialLR,
         unsigned int numEpisodes,
         unsigned int episodeLength
     );
@@ -17,10 +18,11 @@ void train(
     float* output,
     unsigned int numPersons,
     unsigned int numFirms,
+    float initialLR,
     unsigned int numEpisodes,
     unsigned int episodeLength
 ) {
     auto scenario = std::make_shared<neural::VariablePopulationScenario>(numPersons, numFirms);
-    std::vector<float> losses = neural::train(scenario, numEpisodes, episodeLength);
+    std::vector<float> losses = neural::train(scenario, initialLR, numEpisodes, episodeLength);
     std::copy(losses.begin(), losses.end(), output);
 }

@@ -1,4 +1,4 @@
-#include "neuralFirmDecisionMaker.h"
+#include "neuralEconomy.h"
 
 namespace neural {
 

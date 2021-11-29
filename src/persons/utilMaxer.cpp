@@ -44,6 +44,10 @@ std::shared_ptr<const VecToScalar> UtilMaxer::get_utilFunc() const {
     return utilFunc;
 }
 
+std::shared_ptr<const PersonDecisionMaker> UtilMaxer::get_decisionMaker() const {
+    return decisionMaker;
+}
+
 double UtilMaxer::get_discountRate() const {
     return discountRate;
 }

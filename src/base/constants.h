@@ -4,7 +4,7 @@
 #include <thread>
 
 namespace constants {
-    const unsigned int verbose = 2;
+    const unsigned int verbose = 1;
     const double defaultPrice = 1.0;
     const double priceMultiplier = 1.1;
     const double defaultLaborBudget = 0.5;

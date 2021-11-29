@@ -74,6 +74,10 @@ std::shared_ptr<const VecToVec> ProfitMaxer::get_prodFunc() const {
     return prodFunc;
 }
 
+std::shared_ptr<const FirmDecisionMaker> ProfitMaxer::get_decisionMaker() const {
+    return decisionMaker;
+}
+
 
 void ProfitMaxer::produce() {
     std::lock_guard<std::mutex> lock(myMutex);

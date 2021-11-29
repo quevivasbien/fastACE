@@ -124,7 +124,6 @@ DecisionNetHandler::DecisionNetHandler(
 
 
 DecisionNetHandler::DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy) : economy(economy) {
-    int numAgents = economy->get_maxAgents();
     int numGoods = economy->get_numGoods();
     // NOTE: numUtilParams assumes persons have CES utility functions,
     // with goods + labor + tfp + elasticity as params
@@ -134,69 +133,82 @@ DecisionNetHandler::DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy) :
 
     offerEncoder = std::make_shared<OfferEncoder>(
         DEFAULT_STACK_SIZE,
-        numAgents + numGoods + 1,
+        numGoods + 1,
         DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN,
         DEFAULT_ENCODING_SIZE
     );
     jobOfferEncoder = std::make_shared<OfferEncoder>(
         DEFAULT_STACK_SIZE,
-        numAgents + 2,
+        2,
         DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN,
         DEFAULT_ENCODING_SIZE
     );
     purchaseNet = std::make_shared<PurchaseNet>(
         offerEncoder,
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     firmPurchaseNet = std::make_shared<PurchaseNet>(
         offerEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     laborSearchNet = std::make_shared<PurchaseNet>(
         jobOfferEncoder,
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     consumptionNet = std::make_shared<ConsumptionNet>(
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     productionNet = std::make_shared<ConsumptionNet>(
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     offerNet = std::make_shared<OfferNet>(
         offerEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN,
+        DEFAULT_N_HIDDEN_SMALL
     );
     jobOfferNet = std::make_shared<JobOfferNet>(
         jobOfferEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     valueNet = std::make_shared<ValueNet>(
         offerEncoder,
         jobOfferEncoder,
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
     firmValueNet = std::make_shared<ValueNet>(
         offerEncoder,
         jobOfferEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE
+        DEFAULT_HIDDEN_SIZE,
+        DEFAULT_N_HIDDEN
     );
 
     time_step();
@@ -207,11 +219,6 @@ void DecisionNetHandler::update_encodedOffers() {
     offers = economy->get_market();
     unsigned int numOffers = offers.size();
 
-    // NOTE: if the simulation is going to add more agents later,
-    // then the size of this should be set to MORE than totalAgents
-    torch::Tensor offerers = torch::zeros(
-        {numOffers, economy->get_maxAgents()}
-    );
     torch::Tensor goods = torch::empty(
         {numOffers, economy->get_numGoods()}
     );
@@ -219,14 +226,12 @@ void DecisionNetHandler::update_encodedOffers() {
 
     for (int i = 0; i < numOffers; i++) {
         auto offer = offers[i];
-        // set offerer
-        offerers[i][economy->get_id_for_agent(offer->offerer)] = 1;
         // set goods
         goods[i] = eigenToTorch(offer->quantities).squeeze(-1);
         // set prices
         prices[i] = offer->price;
     }
-    auto inputFeatures = torch::cat({goods, prices, offerers}, 1);
+    auto inputFeatures = torch::cat({goods, prices}, 1);
 
     encodedOffers = offerEncoder->forward(inputFeatures);
     numEncodedOffers = numOffers;
@@ -237,18 +242,15 @@ void DecisionNetHandler::update_encodedJobOffers() {
     jobOffers = economy->get_jobMarket();
     unsigned int numOffers = jobOffers.size();
 
-    // NOTE: this is inefficient, since only firms make job offers...
-    torch::Tensor offerers = torch::zeros({numOffers, economy->get_maxAgents()});
     torch::Tensor labors = torch::empty({numOffers, 1});
     torch::Tensor wages = torch::empty({numOffers, 1});
 
     for (int i = 0; i < numOffers; i++) {
         auto jobOffer = jobOffers[i];
-        offerers[i][economy->get_id_for_agent(jobOffer->offerer)] = 1;
         labors[i] = jobOffer->labor;
         wages[i] = jobOffer->wage;
     }
-    auto inputFeatures = torch::cat({labors, wages, offerers}, 1);
+    auto inputFeatures = torch::cat({labors, wages}, 1);
 
     encodedJobOffers = jobOfferEncoder->forward(inputFeatures);
     numEncodedJobOffers = numOffers;

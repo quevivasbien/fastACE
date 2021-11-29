@@ -42,6 +42,7 @@ public:
     double u(const Eigen::ArrayXd& quantities);  // implicitly inputs labor = laborSupplied
 
     std::shared_ptr<const VecToScalar> get_utilFunc() const;
+    std::shared_ptr<const PersonDecisionMaker> get_decisionMaker() const;
     double get_discountRate() const;
 
     virtual std::string get_typename() const override;

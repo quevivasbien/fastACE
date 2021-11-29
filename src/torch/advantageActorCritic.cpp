@@ -3,17 +3,76 @@
 
 namespace neural {
 
+
+
+LRScheduler::LRScheduler(
+    std::shared_ptr<torch::optim::Adam> optimizer,
+    float threshold,
+    unsigned int episodeGroupSize,
+    float decayMultiplier
+) : optimizer(optimizer),
+    threshold(threshold),
+    decayMultiplier(decayMultiplier),
+    episodeGroupSize(episodeGroupSize)
+{}
+
+void LRScheduler::decay_lr() {
+    pprint(1, "Decaying LR...");
+    for (auto& group : optimizer->param_groups()) {
+        if (group.has_options()) {
+            auto& options = static_cast<torch::optim::AdamOptions&>(group.options());
+            options.lr(options.lr() * decayMultiplier);
+        }
+    }
+}
+
+void LRScheduler::update_lr(float loss) {
+    lossHistory.push_back(loss);
+    int historySize = lossHistory.size();
+    // if (historySize >= 2 * episodeGroupSize) {
+    //     // get sum of recent loss values and of more distant loss values 
+    //     int recentCutoff = historySize - episodeGroupSize;
+    //     int distantCutoff = recentCutoff - episodeGroupSize;
+    //     float recentSum = 0.0;
+    //     for (int i = historySize - 1; i >= recentCutoff; i--) {
+    //         recentSum += lossHistory[i];
+    //     }
+    //     float distantSum = 0.0;
+    //     for (int i = recentCutoff - 1; i >= distantCutoff; i--) {
+    //         distantSum += lossHistory[i];
+    //     }
+    //     // if the difference between the two sums is small or positive, decay the learning rate
+    //     float diff = distantSum - recentSum;
+    //     if (diff < threshold) {
+    //         decay_lr();
+    //         // remove all but the most recent elements of the history,
+    //         // so we can't reduce the lr again for at least episodeGroupSize periods
+    //         std::vector<float>(
+    //             lossHistory.end() - episodeGroupSize, lossHistory.end()
+    //         ).swap(lossHistory);
+    //         threshold /= 2;
+    //     }
+    // }
+    if (historySize % 100 == 0) {
+        decay_lr();
+    }
+}
+
+
 AdvantageActorCritic::AdvantageActorCritic(
     std::shared_ptr<DecisionNetHandler> handler,
-    double purchaseNetLR,
-    double firmPurchaseNetLR,
-    double laborSearchNetLR,
-    double consumptionNetLR,
-    double productionNetLR,
-    double offerNetLR,
-    double jobOfferNetLR,
-    double valueNetLR,
-    double firmValueNetLR
+    float purchaseNetLR,
+    float firmPurchaseNetLR,
+    float laborSearchNetLR,
+    float consumptionNetLR,
+    float productionNetLR,
+    float offerNetLR,
+    float jobOfferNetLR,
+    float valueNetLR,
+    float firmValueNetLR,
+    float scheduleThreshold,
+    unsigned int scheduleBatchInterval,
+    float scheduleDecayMultiplier
 ) : handler(handler),
     purchaseNetOptim(
         std::make_shared<Adam>(
@@ -68,23 +127,68 @@ AdvantageActorCritic::AdvantageActorCritic(
             handler->firmValueNet->parameters(),
             firmValueNetLR
         )
-    )
+    ),
+
+    purchaseNetScheduler(LRScheduler(
+        purchaseNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    firmPurchaseNetScheduler(LRScheduler(
+        firmPurchaseNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    laborSearchNetScheduler(LRScheduler(
+        laborSearchNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    consumptionNetScheduler(LRScheduler(
+        consumptionNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    productionNetScheduler(LRScheduler(
+        productionNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    offerNetScheduler(LRScheduler(
+        offerNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    jobOfferNetScheduler(LRScheduler(
+        jobOfferNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    valueNetScheduler(LRScheduler(
+        valueNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    )),
+    firmValueNetScheduler(LRScheduler(
+        firmValueNetOptim,
+        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+    ))
 {}
 
 AdvantageActorCritic::AdvantageActorCritic(
-    std::shared_ptr<DecisionNetHandler> handler
+    std::shared_ptr<DecisionNetHandler> handler,
+    float initialLR
 ) : AdvantageActorCritic(
     handler,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE,
-    DEFAULT_LEARNING_RATE
+    initialLR,
+    initialLR,
+    initialLR,
+    initialLR,
+    initialLR,
+    initialLR,
+    initialLR,
+    initialLR,
+    initialLR,
+    DEFAULT_LR_SCHEDULE_THRESHOLD,
+    DEFAULT_LR_SCHEDULE_BATCH_INTERVAL,
+    DEFAULT_LR_SCHEDULE_DECAY_MULTIPLIER
 ) {}
+
+AdvantageActorCritic::AdvantageActorCritic(
+    std::shared_ptr<DecisionNetHandler> handler
+) : AdvantageActorCritic(handler, DEFAULT_LEARNING_RATE) {}
 
 torch::Tensor AdvantageActorCritic::get_loss_from_logProba(
     const std::vector<
@@ -108,10 +212,10 @@ torch::Tensor AdvantageActorCritic::get_loss_from_logProba(
             );
         }
     }
-    return loss / handler->time;
+    return loss;
 }
 
-torch::Tensor AdvantageActorCritic::get_loss_for_person_in_episode(
+std::pair<torch::Tensor, torch::Tensor> AdvantageActorCritic::get_advantage_for_person(
     std::shared_ptr<Person> person
 ) {
     auto person_as_utilmaxer = std::static_pointer_cast<UtilMaxer>(person);
@@ -119,7 +223,7 @@ torch::Tensor AdvantageActorCritic::get_loss_for_person_in_episode(
     // Calculate advantage time series
     // advantage is realized utility minus predicted value in each state
     // Then critic loss is sum of squared advantage
-    auto loss = torch::tensor(0.0, torch::requires_grad(true));
+    auto loss = torch::tensor(0.0);
     auto advantage = torch::empty(handler->time);
     auto q = torch::tensor(0.0, torch::requires_grad(true));
     for (int t = handler->time - 1; t >= 0; t--) {
@@ -143,38 +247,59 @@ torch::Tensor AdvantageActorCritic::get_loss_for_person_in_episode(
             );
         }
     }
+    return std::make_pair(loss, advantage);
+}
 
-    // normalize by episode length
-    loss = loss / handler->time;
-    // std::cout << "After person adv: " << loss.item<float>() << std::endl;
+float AdvantageActorCritic::get_loss_for_person_in_episode(
+    std::shared_ptr<Person> person,
+    unsigned int numTotalPersons
+) {
+    auto loss_advantage_pair = get_advantage_for_person(person);
+    auto loss = loss_advantage_pair.first;
+    auto advantage = loss_advantage_pair.second;
 
     // Get loss from the other person decision nets
-    loss = loss + get_loss_from_logProba(
+    torch::Tensor purchaseLoss = get_loss_from_logProba(
         handler->purchaseNetLogProba,
         purchaseNetOptim,
         person,
         advantage
     );
-    // std::cout << "After person purchaseNet: " << loss.item<float>() << std::endl;
-    loss = loss + get_loss_from_logProba(
+
+    torch::Tensor laborSearchLoss = get_loss_from_logProba(
         handler->laborSearchNetLogProba,
         laborSearchNetOptim,
         person,
         advantage
     );
-    // std::cout << "After person laborSearchNet: " << loss.item<float>() << std::endl;
-    loss = loss + get_loss_from_logProba(
+
+    torch::Tensor consumptionLoss = get_loss_from_logProba(
         handler->consumptionNetLogProba,
         consumptionNetOptim,
         person,
         advantage
     );
-    // std::cout << "After person consumptionNet: " << loss.item<float>() << std::endl;
 
-    return loss;
+    loss = loss
+            + purchaseLoss
+            + laborSearchLoss
+            + consumptionLoss;
+    
+    // also record intermediate loss values
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        purchaseNetLoss += purchaseLoss.item<float>();
+        laborSearchNetLoss += laborSearchLoss.item<float>();
+        consumptionNetLoss += consumptionLoss.item<float>();
+    }
+
+    // normalize by episode length and num persons in economy
+    loss = loss / static_cast<long>(handler->time * numTotalPersons);
+    loss.backward({}, true);
+    return loss.item<float>();
 }
 
-torch::Tensor AdvantageActorCritic::get_loss_for_firm_in_episode(
+std::pair<torch::Tensor, torch::Tensor> AdvantageActorCritic::get_advantage_for_firm(
     std::shared_ptr<Firm> firm
 ) {
     // here advantage is realized profit minus predicted value in each state
@@ -204,56 +329,82 @@ torch::Tensor AdvantageActorCritic::get_loss_for_firm_in_episode(
             );
         }
     }
+    return std::make_pair(loss, advantage);
+}
 
-    loss = loss / (handler->time - 1);
-    // std::cout << "After firm adv: " << loss.item<float>() << std::endl;
+float AdvantageActorCritic::get_loss_for_firm_in_episode(
+    std::shared_ptr<Firm> firm,
+    unsigned int numTotalFirms
+) {
+    auto loss_advantage_pair = get_advantage_for_firm(firm);
+    auto loss = loss_advantage_pair.first;
+    auto advantage = loss_advantage_pair.second;
 
-    // Get loss from the other firm decision nets
-    loss = loss + get_loss_from_logProba(
+    firmValueNetLoss += loss.item<float>();
+
+    // Get loss from the other firm decision nets    
+    torch::Tensor firmPurchaseLoss = get_loss_from_logProba(
         handler->firmPurchaseNetLogProba,
         firmPurchaseNetOptim,
         firm,
         advantage
     );
-    // std::cout << "After firm purchaseNet: " << loss.item<float>() << std::endl;
-    loss = loss + get_loss_from_logProba(
+    
+    torch::Tensor productionLoss = get_loss_from_logProba(
         handler->productionNetLogProba,
         productionNetOptim,
         firm,
         advantage
     );
-    // std::cout << "After firm productionNet: " << loss.item<float>() << std::endl;
-    loss = loss + get_loss_from_logProba(
+    
+    torch::Tensor offerLoss = get_loss_from_logProba(
         handler->offerNetLogProba,
         offerNetOptim,
         firm,
         advantage
     );
-    // std::cout << "After firm offerNet: " << loss.item<float>() << std::endl;
-    loss = loss + get_loss_from_logProba(
+    
+    torch::Tensor jobOfferLoss = get_loss_from_logProba(
         handler->jobOfferNetLogProba,
         jobOfferNetOptim,
         firm,
         advantage
     );
-    // std::cout << "After firm jobOfferNet: " << loss.item<float>() << std::endl;
 
-    return loss;
+    loss = loss
+            + firmPurchaseLoss
+            + productionLoss
+            + offerLoss
+            + jobOfferLoss;
+    
+    // also record intermediate loss values
+    {
+        std::lock_guard<std::mutex> lock(myMutex);
+        firmPurchaseNetLoss += firmPurchaseLoss.item<float>();
+        productionNetLoss += productionLoss.item<float>();
+        offerNetLoss += offerLoss.item<float>();
+        jobOfferNetLoss += jobOfferLoss.item<float>();
+    }
+
+    loss = loss / static_cast<long>((handler->time - 1) * numTotalFirms);
+    loss.backward({}, true);
+    return loss.item<float>();
+
 }
 
 void AdvantageActorCritic::get_loss_for_persons_multithreaded_(
     const std::vector<std::shared_ptr<Person>>& persons,
     unsigned int startIdx,
     unsigned int endIdx,
-    torch::Tensor* loss
+    float* loss
 ) {
-    auto loss_to_add = torch::tensor(0.0);
+    float loss_to_add = 0.0;
     for (unsigned int i = startIdx; i < endIdx; i++) {
-        loss_to_add = loss_to_add + get_loss_for_person_in_episode(persons[i]);
+        loss_to_add += get_loss_for_person_in_episode(persons[i], persons.size());
     }
     {
         std::lock_guard<std::mutex> lock(myMutex);
-        *loss = *loss + loss_to_add;
+        *loss += loss_to_add;
     }
 }
 
@@ -261,20 +412,20 @@ void AdvantageActorCritic::get_loss_for_firms_multithreaded_(
     const std::vector<std::shared_ptr<Firm>>& firms,
     unsigned int startIdx,
     unsigned int endIdx,
-    torch::Tensor* loss
+    float* loss
 ) {
-    auto loss_to_add = torch::tensor(0.0);
+    float loss_to_add = 0.0;
     for (unsigned int i = startIdx; i < endIdx; i++) {
-        loss_to_add = loss_to_add + get_loss_for_firm_in_episode(firms[i]);
+        loss_to_add += get_loss_for_firm_in_episode(firms[i], firms.size());
     }
     {
         std::lock_guard<std::mutex> lock(myMutex);
-        *loss = *loss + loss_to_add;
+        *loss += loss_to_add;
     }
 }
 
-torch::Tensor AdvantageActorCritic::get_loss_for_persons_multithreaded() {
-    auto loss = torch::tensor(0.0);
+float AdvantageActorCritic::get_loss_for_persons_multithreaded() {
+    float loss = 0.0;
     auto persons = handler->economy->get_persons();
     std::vector<unsigned int> indices = get_indices_for_multithreading(persons.size());
     std::vector<std::thread> threads;
@@ -299,8 +450,8 @@ torch::Tensor AdvantageActorCritic::get_loss_for_persons_multithreaded() {
     return loss;
 };
 
-torch::Tensor AdvantageActorCritic::get_loss_for_firms_multithreaded() {
-    auto loss = torch::tensor(0.0);
+float AdvantageActorCritic::get_loss_for_firms_multithreaded() {
+    float loss = 0.0;
     auto firms = handler->economy->get_firms();
     std::vector<unsigned int> indices = get_indices_for_multithreading(firms.size());
     std::vector<std::thread> threads;
@@ -325,6 +476,116 @@ torch::Tensor AdvantageActorCritic::get_loss_for_firms_multithreaded() {
     return loss;
 }
 
+float AdvantageActorCritic::get_loss_multithreaded() {
+    auto persons = handler->economy->get_persons();
+    unsigned int numPersons = persons.size();
+    auto firms = handler->economy->get_firms();
+    unsigned int numFirms = firms.size();
+
+    auto loss = torch::tensor(0.0);
+    // first get advantage and loss for each person
+    std::vector<torch::Tensor> personAdvantages(numPersons);
+    for (unsigned int i = 0; i < numPersons; i++) {
+        auto loss_advantage_pair = get_advantage_for_person(persons[i]);
+        loss = loss + loss_advantage_pair.first;
+        personAdvantages[i] = loss_advantage_pair.second;
+    }
+    // same idea for firms
+    std::vector<torch::Tensor> firmAdvantages(numFirms);
+    for (unsigned int i = 0; i < numFirms; i++) {
+        auto loss_advantage_pair = get_advantage_for_firm(firms[i]);
+        loss = loss_advantage_pair.first;
+        firmAdvantages[i] = loss_advantage_pair.second;
+    }
+    loss.backward({}, true);
+    float loss_ = loss.item<float>();
+
+    // now go through the decision nets, multithreaded
+    // person decision nets
+    std::thread purchaseThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Person>,
+        this,
+        numPersons,
+        handler->purchaseNetLogProba,
+        purchaseNetOptim,
+        persons,
+        personAdvantages,
+        &loss_
+    );
+    std::thread laborSearchThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Person>,
+        this,
+        numPersons,
+        handler->laborSearchNetLogProba,
+        laborSearchNetOptim,
+        persons,
+        personAdvantages,
+        &loss_
+    );
+    std::thread consumptionThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Person>,
+        this,
+        numPersons,
+        handler->consumptionNetLogProba,
+        consumptionNetOptim,
+        persons,
+        personAdvantages,
+        &loss_
+    );
+    // firm decision nets
+    std::thread firmPurchaseThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Firm>,
+        this,
+        numFirms,
+        handler->firmPurchaseNetLogProba,
+        firmPurchaseNetOptim,
+        firms,
+        firmAdvantages,
+        &loss_
+    );
+    std::thread productionThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Firm>,
+        this,
+        numFirms,
+        handler->productionNetLogProba,
+        productionNetOptim,
+        firms,
+        firmAdvantages,
+        &loss_
+    );
+    std::thread offerThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Firm>,
+        this,
+        numFirms,
+        handler->offerNetLogProba,
+        offerNetOptim,
+        firms,
+        firmAdvantages,
+        &loss_
+    );
+    std::thread jobOfferThread(
+        &AdvantageActorCritic::get_loss_from_logProba_multithreaded<Firm>,
+        this,
+        numFirms,
+        handler->jobOfferNetLogProba,
+        jobOfferNetOptim,
+        firms,
+        firmAdvantages,
+        &loss_
+    );
+
+    // join all threads and finish
+    purchaseThread.join();
+    firmPurchaseThread.join();
+    laborSearchThread.join();
+    consumptionThread.join();
+    productionThread.join();
+    offerThread.join();
+    jobOfferThread.join();
+
+    return loss_;
+}
+
 void AdvantageActorCritic::zero_all_grads() {
     purchaseNetOptim->zero_grad();
     firmPurchaseNetOptim->zero_grad();
@@ -335,6 +596,31 @@ void AdvantageActorCritic::zero_all_grads() {
     jobOfferNetOptim->zero_grad();
     valueNetOptim->zero_grad();
     firmValueNetOptim->zero_grad();
+}
+
+void AdvantageActorCritic::zero_all_tracked_losses() {
+    purchaseNetLoss = 0.0;
+    firmPurchaseNetLoss = 0.0;
+    laborSearchNetLoss = 0.0;
+    consumptionNetLoss = 0.0;
+    productionNetLoss = 0.0;
+    offerNetLoss = 0.0;
+    jobOfferNetLoss = 0.0;
+    valueNetLoss = 0.0;
+    firmValueNetLoss = 0.0;
+}
+
+void AdvantageActorCritic::update_lr_schedulers() {
+    purchaseNetScheduler.update_lr(purchaseNetLoss);
+    firmPurchaseNetScheduler.update_lr(firmPurchaseNetLoss);
+    laborSearchNetScheduler.update_lr(laborSearchNetLoss);
+    consumptionNetScheduler.update_lr(consumptionNetLoss);
+    productionNetScheduler.update_lr(productionNetLoss);
+    offerNetScheduler.update_lr(offerNetLoss);
+    jobOfferNetScheduler.update_lr(jobOfferNetLoss);
+    valueNetScheduler.update_lr(valueNetLoss);
+    firmValueNetScheduler.update_lr(firmValueNetLoss);
+    zero_all_tracked_losses();
 }
 
 void AdvantageActorCritic::all_optims_step() {
@@ -351,25 +637,26 @@ void AdvantageActorCritic::all_optims_step() {
 
 float AdvantageActorCritic::train_on_episode() {
     zero_all_grads();
-    auto loss = torch::tensor(0.0);
+    update_lr_schedulers();
+    float loss_ = 0.0;
     if (constants::multithreaded) {
-        loss = loss + get_loss_for_persons_multithreaded();
-        loss = loss + get_loss_for_firms_multithreaded();
+        // loss_ += get_loss_multithreaded();
+        loss_ += get_loss_for_persons_multithreaded();
+        loss_ += get_loss_for_firms_multithreaded();
     }
     else {
-        for (auto person : handler->economy->get_persons()) {
-            loss = loss + get_loss_for_person_in_episode(person);
+        auto persons = handler->economy->get_persons();
+        for (auto person : persons) {
+            loss_ += get_loss_for_person_in_episode(person, persons.size());
         }
-        for (auto firm : handler->economy->get_firms()) {
-            loss = loss + get_loss_for_firm_in_episode(firm);
+        auto firms = handler->economy->get_firms();
+        for (auto firm : firms) {
+            loss_ += get_loss_for_firm_in_episode(firm, firms.size());
         }
     }
     
-    // normalize loss by number of agents in the economy
-    loss = loss / static_cast<long>(handler->economy->get_maxAgents());
-    loss.backward();
     all_optims_step();
-    return loss.item<float>();
+    return loss_;
 }
 
 

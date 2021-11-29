@@ -8,9 +8,6 @@ namespace neural {
 
 void xavier_init(torch::nn::Module& module);
 
-// create_linear just creates new linear layer and applies xavier_init
-torch::nn::Linear create_linear(int in_features, int out_features);
-
 
 struct OfferEncoder : torch::nn::Module {
 	/**
@@ -23,7 +20,8 @@ struct OfferEncoder : torch::nn::Module {
 	numFeatures is the number of features for each offer
 		typically will have size numAgents (who is offering?) + numGoods (what goods are offered?) + 1 (price)
 		for encoding JobOffers, will have size numAgents + 2 (offerer, labor, and wage)
-	intermediateSize is size of hidden layers
+	hiddenSize is size of hidden layers
+	numHidden is the number of fully hidden layers
 	encodingSize is the size of the output (encoded) layer
 
 	Takes inputs with shape [batch size] x stackSize x numFeatures
@@ -32,18 +30,19 @@ struct OfferEncoder : torch::nn::Module {
 	OfferEncoder(
 		int stackSize,
 		int numFeatures,
-		int intermediateSize,
+		int hiddenSize,
+		int numHidden,
 		int encodingSize
 	);
 
 	torch::Tensor forward(torch::Tensor x);
 
 	torch::nn::Linear dimReduce = nullptr;
-	torch::nn::Linear stackedForward1 = nullptr;
-	torch::nn::Linear stackedForward2 = nullptr;
+	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
 
 	int stackSize;
+	int numHidden;
 	int encodingSize;
 };
 
@@ -71,7 +70,8 @@ struct PurchaseNet : torch::nn::Module {
 		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
-		int hiddenSize
+		int hiddenSize,
+		int numHidden
 	);
 
 	torch::Tensor forward(
@@ -89,15 +89,14 @@ struct PurchaseNet : torch::nn::Module {
 	);
 
 	torch::nn::Linear flatten = nullptr;
-	torch::nn::Linear flatForward1 = nullptr;
-	torch::nn::Linear flatForward2 = nullptr;
-	torch::nn::Linear flatForward3 = nullptr;
+	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
 
 	// You should use this offer encoder to encode any offers
 	// *before* passing them through the forward method
 	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	int numUtilParams;
+	int numHidden;
 };
 
 
@@ -110,7 +109,8 @@ struct ConsumptionNet : torch::nn::Module {
 	ConsumptionNet(
 		int numUtilParams,
 		int numGoods,
-		int hiddenSize
+		int hiddenSize,
+		int numHidden
 	);
 
 	torch::Tensor forward(
@@ -121,12 +121,12 @@ struct ConsumptionNet : torch::nn::Module {
 	);
 
 	torch::nn::Linear first = nullptr;
-	torch::nn::Linear hidden1 = nullptr;
-	torch::nn::Linear hidden2 = nullptr;
+	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
 
 	int numUtilParams;
 	int numGoods;
+	int numHidden;
 };
 
 
@@ -149,7 +149,10 @@ struct OfferNet : torch::nn::Module {
 		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
-		int hiddenSize
+		int hiddenSize_firstStage,
+		int hiddenSize_secondStage,
+		int numHidden_firstStage,
+		int numHidden_secondStage
 	);
 
 	torch::Tensor forward(
@@ -161,16 +164,17 @@ struct OfferNet : torch::nn::Module {
 	);
 
 	torch::nn::Linear flatten = nullptr;
-	torch::nn::Linear flatForward1 = nullptr;
-	torch::nn::Linear flatForward2 = nullptr;
-	torch::nn::Linear flatForward3a = nullptr;
-	torch::nn::Linear flatForward3b = nullptr;
-	torch::nn::Linear lasta = nullptr;
-	torch::nn::Linear lastb = nullptr;
+	std::vector<torch::nn::Linear> hidden_firstStage;
+	std::vector<torch::nn::Linear> hidden_secondStage_a;
+	std::vector<torch::nn::Linear> hidden_secondStage_b;
+	torch::nn::Linear last_a = nullptr;
+	torch::nn::Linear last_b = nullptr;
 
 	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	int numUtilParams;
 	int numGoods;
+	int numHidden_firstStage;
+	int numHidden_secondStage;
 };
 
 
@@ -185,7 +189,8 @@ struct JobOfferNet : torch::nn::Module {
 		std::shared_ptr<OfferEncoder> offerEncoder,
 		int numUtilParams,
 		int numGoods,
-		int hiddenSize
+		int hiddenSize,
+		int numHidden
 	);
 
 	torch::Tensor forward(
@@ -197,13 +202,12 @@ struct JobOfferNet : torch::nn::Module {
 	);
 
 	torch::nn::Linear flatten = nullptr;
-	torch::nn::Linear flatForward1 = nullptr;
-	torch::nn::Linear flatForward2 = nullptr;
-	torch::nn::Linear flatForward3 = nullptr;
+	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
 
 	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	int numUtilParams;
+	int numHidden;
 };
 
 
@@ -217,7 +221,8 @@ struct ValueNet : torch::nn::Module {
 		std::shared_ptr<OfferEncoder> jobOfferEncoder,
 		int numUtilParams,
 		int numGoods,
-		int hiddenSize
+		int hiddenSize,
+		int numHidden
 	);
 
 	torch::Tensor forward(
@@ -231,13 +236,13 @@ struct ValueNet : torch::nn::Module {
 
 	torch::nn::Linear offerFlatten = nullptr;
 	torch::nn::Linear jobOfferFlatten = nullptr;
-	torch::nn::Linear flatForward1 = nullptr;
-	torch::nn::Linear flatForward2 = nullptr;
+	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
 
 	std::shared_ptr<OfferEncoder> offerEncoder = nullptr;
 	std::shared_ptr<OfferEncoder> jobOfferEncoder = nullptr;
 	int numUtilParams;
+	int numHidden;
 };
 
 

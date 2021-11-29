@@ -34,6 +34,7 @@ public:
     double get_revenue(double labor, const Eigen::ArrayXd& quantities, const Eigen::ArrayXd& prices);
 
     std::shared_ptr<const VecToVec> get_prodFunc() const;
+    std::shared_ptr<const FirmDecisionMaker> get_decisionMaker() const;
 
     virtual std::string get_typename() const override;
 
