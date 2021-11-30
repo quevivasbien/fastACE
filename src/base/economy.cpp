@@ -146,6 +146,7 @@ void Economy::print_summary() const {
     std::cout << "Offers:\n";
     for (auto offer_ : market) {
         auto offer = offer_.lock();
+        if (offer == nullptr) { continue; }
         std::cout << "Offerer: " << offer->offerer.lock() << " ~ amt left: " << offer->amountLeft
             << " ~ amt taken: " << offer->amountTaken
             << "\n price: " << offer->price << " ~ quantitities " << offer->quantities.transpose()
@@ -154,6 +155,7 @@ void Economy::print_summary() const {
     std::cout << "\nJob Offers:\n";
     for (auto offer_ : jobMarket) {
         auto offer = offer_.lock();
+        if (offer == nullptr) { continue; }
         std::cout << "Offerer: " << offer->offerer.lock() << " ~ amt left: " << offer->amountLeft
             << " ~ amt taken: " << offer->amountTaken
             << "\n wage: " << offer->wage << " ~ labor " << offer->labor

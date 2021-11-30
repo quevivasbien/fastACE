@@ -99,7 +99,7 @@ void Agent::check_my_offers() {
 bool Agent::respond_to_offer(std::weak_ptr<const Offer> offer_) {
     // check that the agent actually has enough money, then send to offerer
     auto offer = offer_.lock();
-    if (money >= offer->price) {
+    if (offer != nullptr && money >= offer->price) {
         print_status(this, "Asking for offer acceptance...");
         bool accepted = offer->offerer.lock()->review_offer_response(shared_from_this(), offer);
         if (accepted) {

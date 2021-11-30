@@ -29,7 +29,7 @@ std::vector<std::weak_ptr<const T>> filter_available(
     availOffers.reserve(offers.size());
     for (auto offer_ : offers) {
         auto offer = offer_.lock();
-        if (offer->is_available() && (offer->offerer.lock() != requester)) {
+        if (offer != nullptr && offer->is_available() && (offer->offerer.lock() != requester)) {
             availOffers.push_back(offer);
         }
     }
@@ -52,35 +52,31 @@ template <typename T>
 void flush(
     std::vector<std::weak_ptr<T>>& offers
 ) {
-    // figure out which offers are no longer available
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < offers.size(); i++) {
-        auto offer = offers[i].lock();
-        if (offer == nullptr || !offer->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    // remove those offers
-    for (unsigned int i : idxs) {
-        offers[i] = offers.back();
-        offers.pop_back();
-    }
+    offers.erase(
+        std::remove_if(
+            offers.begin(),
+            offers.end(),
+            [](std::weak_ptr<T> offer_) {
+                auto offer = offer_.lock();
+                return (offer == nullptr || !offer->is_available());
+            }
+        ),
+        offers.end()
+    );
 }
 
 template <typename T>
 void flush(
     std::vector<std::shared_ptr<T>>& offers
 ) {
-    std::vector<unsigned int> idxs;
-    for (unsigned int i = 0; i < offers.size(); i++) {
-        if (!offers[i]->is_available()) {
-            idxs.push_back(i);
-        }
-    }
-    for (unsigned int i : idxs) {
-        offers[i] = offers.back();
-        offers.pop_back();
-    }
+    offers.erase(
+        std::remove_if(
+            offers.begin(),
+            offers.end(),
+            [](std::shared_ptr<T> offer) { return !offer->is_available(); }
+        ),
+        offers.end()
+    );
 }
 
 
