@@ -20,15 +20,16 @@ inline std::default_random_engine get_rng() {
 
 // helper function used for filtering offers by availability
 template <typename T>
-std::vector<std::shared_ptr<const T>> filter_available(
+std::vector<std::weak_ptr<const T>> filter_available(
     std::shared_ptr<Agent> requester,
-    const std::vector<std::shared_ptr<const T>>& offers,
+    const std::vector<std::weak_ptr<const T>>& offers,
     std::default_random_engine rng
 ) {
-    std::vector<std::shared_ptr<const T>> availOffers;
+    std::vector<std::weak_ptr<const T>> availOffers;
     availOffers.reserve(offers.size());
-    for (auto offer : offers) {
-        if (offer->is_available() && (offer->offerer != requester)) {
+    for (auto offer_ : offers) {
+        auto offer = offer_.lock();
+        if (offer->is_available() && (offer->offerer.lock() != requester)) {
             availOffers.push_back(offer);
         }
     }
@@ -48,16 +49,35 @@ std::shared_ptr<T> create(Args&& ... args) {
 
 // helper for getting rid of unavailable offers
 template <typename T>
-void flush(std::vector<std::shared_ptr<T>>& offers) {
+void flush(
+    std::vector<std::weak_ptr<T>>& offers
+) {
     // figure out which offers are no longer available
+    std::vector<unsigned int> idxs;
+    for (unsigned int i = 0; i < offers.size(); i++) {
+        auto offer = offers[i].lock();
+        if (offer == nullptr || !offer->is_available()) {
+            idxs.push_back(i);
+        }
+    }
+    // remove those offers
+    for (unsigned int i : idxs) {
+        offers[i] = offers.back();
+        offers.pop_back();
+    }
+}
+
+template <typename T>
+void flush(
+    std::vector<std::shared_ptr<T>>& offers
+) {
     std::vector<unsigned int> idxs;
     for (unsigned int i = 0; i < offers.size(); i++) {
         if (!offers[i]->is_available()) {
             idxs.push_back(i);
         }
     }
-    // remove those offers
-    for (auto i : idxs) {
+    for (unsigned int i : idxs) {
         offers[i] = offers.back();
         offers.pop_back();
     }

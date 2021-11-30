@@ -2,7 +2,7 @@
 
 
 BaseOffer::BaseOffer(
-    std::shared_ptr<Agent> offerer,
+    std::weak_ptr<Agent> offerer,
     unsigned int amount_available
 ) : offerer(offerer), amountLeft(amount_available) {}
 
@@ -12,7 +12,7 @@ bool BaseOffer::is_available() const {
 
 
 Offer::Offer(
-    std::shared_ptr<Agent> offerer,
+    std::weak_ptr<Agent> offerer,
     unsigned int amount_available,
     Eigen::ArrayXd quantities,
     double price
@@ -20,7 +20,7 @@ Offer::Offer(
 
 
 JobOffer::JobOffer(
-    std::shared_ptr<Firm> offerer,
+    std::weak_ptr<Firm> offerer,
     unsigned int amount_available,
     double labor,
     double wage

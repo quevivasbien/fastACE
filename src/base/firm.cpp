@@ -1,5 +1,6 @@
 #include <vector>
 #include <memory>
+#include <typeinfo>
 #include "base.h"
 
 Firm::Firm(std::shared_ptr<Economy> economy, std::shared_ptr<Agent> owner)
@@ -30,7 +31,7 @@ bool Firm::time_step() {
         check_myJobOffers();
         {
             std::lock_guard<std::mutex> lock(myMutex);
-            flush<JobOffer>(myJobOffers);
+            flush(myJobOffers);
         }
         print_status(this, "Buying goods...");
         buy_goods();
@@ -48,26 +49,27 @@ bool Firm::time_step() {
 
 void Firm::post_jobOffer(std::shared_ptr<JobOffer> jobOffer) {
     std::lock_guard<std::mutex> lock(myMutex);
-    assert(jobOffer->offerer == shared_from_this());
-    economy->add_jobOffer(jobOffer);
+    assert(jobOffer->offerer.lock() == shared_from_this());
+    economy->add_jobOffer(std::weak_ptr<const JobOffer>(jobOffer));
     myJobOffers.push_back(jobOffer);
 }
 
 
 bool Firm::review_jobOffer_response(
     std::shared_ptr<Person> responder,
-    std::shared_ptr<const JobOffer> jobOffer
+    std::weak_ptr<const JobOffer> jobOffer
 ) {
+    std::shared_ptr<const JobOffer> jobOffer_ = jobOffer.lock();
     std::shared_ptr<JobOffer> myCopy = nullptr;
     {
         std::lock_guard<std::mutex> lock(myMutex);
-        if (!jobOffer->is_available()) {
+        if (!jobOffer_->is_available()) {
             print_status(this, "Requested offer is not available.");
             return false;
         }
         // check that the offer is in myOffers
         for (auto myOffer : myJobOffers) {
-            if (myOffer == jobOffer) {
+            if (myOffer == jobOffer_) {
                 myCopy = myOffer;
                 break;
             }
@@ -98,6 +100,7 @@ void Firm::check_myJobOffers() {
         if (amountAble > offer->amountLeft) {
             offer->amountLeft = amountAble;
         }
+        moneyLeft -= (offer->wage * offer->amountLeft);
     }
 }
 

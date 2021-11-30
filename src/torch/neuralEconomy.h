@@ -227,11 +227,11 @@ struct DecisionNetHandler {
 
 	torch::Tensor encodedOffers;
     int numEncodedOffers;
-	std::vector<std::shared_ptr<const Offer>> offers;
+	std::vector<std::weak_ptr<const Offer>> offers;
 
     torch::Tensor encodedJobOffers;
     int numEncodedJobOffers;
-    std::vector<std::shared_ptr<const JobOffer>> jobOffers;
+    std::vector<std::weak_ptr<const JobOffer>> jobOffers;
 
     int time = -1;
 

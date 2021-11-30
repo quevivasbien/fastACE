@@ -36,18 +36,18 @@ const std::vector<std::string>& Economy::get_goods() const { return goods; }
 
 unsigned int Economy::get_numGoods() const { return numGoods; }
 
-const std::vector<std::shared_ptr<const Offer>>& Economy::get_market() const { return market; }
+const std::vector<std::weak_ptr<const Offer>>& Economy::get_market() const { return market; }
 
-const std::vector<std::shared_ptr<const JobOffer>>& Economy::get_jobMarket() const { return jobMarket; }
+const std::vector<std::weak_ptr<const JobOffer>>& Economy::get_jobMarket() const { return jobMarket; }
 
 std::default_random_engine Economy::get_rng() const { return rng; }
 
 
-void Economy::add_offer(std::shared_ptr<const Offer> offer) {
+void Economy::add_offer(std::weak_ptr<const Offer> offer) {
     std::lock_guard<std::mutex> lock(mutex);
     market.push_back(offer);
 }
-void Economy::add_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
+void Economy::add_jobOffer(std::weak_ptr<const JobOffer> jobOffer) {
     std::lock_guard<std::mutex> lock(mutex);
     jobMarket.push_back(jobOffer);
 }
@@ -116,8 +116,8 @@ bool Economy::time_step() {
             firm->time_step();
         }
     }
-    flush<const Offer>(market);
-    flush<const JobOffer>(jobMarket);
+    flush(market);
+    flush(jobMarket);
     if (constants::verbose >= 3) {
         print_summary();
     }
@@ -144,15 +144,17 @@ void Economy::print_summary() const {
         << "----------\n";
     std::cout << "Time: " << time << "\n\n";
     std::cout << "Offers:\n";
-    for (auto offer : market) {
-        std::cout << "Offerer: " << offer->offerer << " ~ amt left: " << offer->amountLeft
+    for (auto offer_ : market) {
+        auto offer = offer_.lock();
+        std::cout << "Offerer: " << offer->offerer.lock() << " ~ amt left: " << offer->amountLeft
             << " ~ amt taken: " << offer->amountTaken
             << "\n price: " << offer->price << " ~ quantitities " << offer->quantities.transpose()
             << '\n';
     }
     std::cout << "\nJob Offers:\n";
-    for (auto offer : jobMarket) {
-        std::cout << "Offerer: " << offer->offerer << " ~ amt left: " << offer->amountLeft
+    for (auto offer_ : jobMarket) {
+        auto offer = offer_.lock();
+        std::cout << "Offerer: " << offer->offerer.lock() << " ~ amt left: " << offer->amountLeft
             << " ~ amt taken: " << offer->amountTaken
             << "\n wage: " << offer->wage << " ~ labor " << offer->labor
             << '\n';

@@ -225,7 +225,7 @@ void DecisionNetHandler::update_encodedOffers() {
     torch::Tensor prices = torch::empty({numOffers, 1});
 
     for (int i = 0; i < numOffers; i++) {
-        auto offer = offers[i];
+        auto offer = offers[i].lock();
         // set goods
         goods[i] = eigenToTorch(offer->quantities).squeeze(-1);
         // set prices
@@ -246,7 +246,7 @@ void DecisionNetHandler::update_encodedJobOffers() {
     torch::Tensor wages = torch::empty({numOffers, 1});
 
     for (int i = 0; i < numOffers; i++) {
-        auto jobOffer = jobOffers[i];
+        auto jobOffer = jobOffers[i].lock();
         labors[i] = jobOffer->labor;
         wages[i] = jobOffer->wage;
     }

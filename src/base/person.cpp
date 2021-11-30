@@ -33,11 +33,14 @@ bool Person::time_step() {
 }
 
 
-bool Person::respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer) {
+bool Person::respond_to_jobOffer(std::weak_ptr<const JobOffer> jobOffer_) {
     // check that the person actually has enough labor remaining, then send to offerer
+    auto jobOffer = jobOffer_.lock();
     if (laborSupplied + jobOffer->labor <= 1) {
         print_status(this, "Asking for jobOffer acceptance...");
-        bool accepted = std::static_pointer_cast<Firm>(jobOffer->offerer)->review_jobOffer_response(
+        bool accepted = std::static_pointer_cast<Firm>(
+            jobOffer->offerer.lock()
+        )->review_jobOffer_response(
             std::static_pointer_cast<Person>(shared_from_this()), jobOffer
         );
         if (accepted) {

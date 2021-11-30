@@ -50,14 +50,14 @@ void NeuralEconomy::update_agentMap(std::shared_ptr<Agent> agent) {
     if (totalAgents > maxAgents) {
         pprint_status(
             1,
-            std::static_pointer_cast<NeuralEconomy>(shared_from_this()),
+            this,
             "WARNING: You've EXCEEDED the maximum number of agents allowed for this economy!"
         );
     }
     else if (totalAgents == maxAgents) {
         pprint_status(
             2,
-            std::static_pointer_cast<NeuralEconomy>(shared_from_this()),
+            this,
             "WARNING: You've hit the maximum number of agents allowed for this economy!"
         );
     }

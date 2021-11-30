@@ -20,7 +20,7 @@ class Firm;
 struct BaseOffer {
     // Base struct from which Offer and JobOffer inherit
     BaseOffer(
-        std::shared_ptr<Agent> offerer,
+        std::weak_ptr<Agent> offerer,
         unsigned int amount_available
     );
     virtual ~BaseOffer() {}
@@ -28,7 +28,7 @@ struct BaseOffer {
     unsigned int amountLeft;
 	unsigned int amountTaken = 0;
     // the agent who posted the offer
-    std::shared_ptr<Agent> offerer;
+    std::weak_ptr<Agent> offerer;
 
     // unavailable offers will be swept up by the parent economy
     // in most cases just returns whether amountLeft > 0
@@ -38,7 +38,7 @@ struct BaseOffer {
 
 struct Offer : BaseOffer {
     Offer(
-        std::shared_ptr<Agent> offerer,
+        std::weak_ptr<Agent> offerer,
         unsigned int amount_available,
         Eigen::ArrayXd quantities,
         double price
@@ -51,7 +51,7 @@ struct Offer : BaseOffer {
 
 struct JobOffer : BaseOffer {
     JobOffer(
-        std::shared_ptr<Firm> offerer,
+        std::weak_ptr<Firm> offerer,
         unsigned int amount_available,
         double labor,
         double wage
@@ -65,10 +65,10 @@ struct JobOffer : BaseOffer {
 template <typename T>
 struct Order {
     Order(
-        std::shared_ptr<const T> offer,
+        std::weak_ptr<const T> offer,
         unsigned int amount
     ) : offer(offer), amount(amount) {}
-    std::shared_ptr<const T> offer;
+    std::weak_ptr<const T> offer;
     unsigned int amount;
 };
 
@@ -97,12 +97,12 @@ public:
     const std::vector<std::shared_ptr<Firm>>& get_firms() const;
     const std::vector<std::string>& get_goods() const;
     unsigned int get_numGoods() const;
-    const std::vector<std::shared_ptr<const Offer>>& get_market() const;
-    const std::vector<std::shared_ptr<const JobOffer>>& get_jobMarket() const;
+    const std::vector<std::weak_ptr<const Offer>>& get_market() const;
+    const std::vector<std::weak_ptr<const JobOffer>>& get_jobMarket() const;
     std::default_random_engine get_rng() const;
 
-    void add_offer(std::shared_ptr<const Offer> offer);
-    void add_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
+    void add_offer(std::weak_ptr<const Offer> offer);
+    void add_jobOffer(std::weak_ptr<const JobOffer> jobOffer);
     
     virtual std::string get_typename() const;
     virtual void print_summary() const;
@@ -114,16 +114,13 @@ protected:
     /// normally these goods will be referred to by their indices in the goods list
     std::vector<std::string> goods;
     unsigned int numGoods;  // equal to goods.size()
-    std::vector<std::shared_ptr<const Offer>> market;
-    std::vector<std::shared_ptr<const JobOffer>> jobMarket;
+    std::vector<std::weak_ptr<const Offer>> market;
+    std::vector<std::weak_ptr<const JobOffer>> jobMarket;
     std::default_random_engine rng;
     // variable to keep track of time and control when economy can make a time_step()
     unsigned int time = 0;
 
     std::mutex mutex;
-
-    template <typename T>
-    friend void flush(std::vector<std::shared_ptr<T>>& offers);
 };
 
 
@@ -149,7 +146,7 @@ public:
     // returns true if offer is accepted & successful
     // *should call accept_offer_response to determine if it is successful
     // default implementation accepts all valid responses
-    virtual bool review_offer_response(std::shared_ptr<Agent> responder, std::shared_ptr<const Offer> offer);
+    virtual bool review_offer_response(std::shared_ptr<Agent> responder, std::weak_ptr<const Offer> offer_);
 
     virtual std::string get_typename() const;
     // print a summary of this agent's current status
@@ -176,7 +173,7 @@ protected:
     // lists offers for goods
     virtual void sell_goods() {} // by default does nothing
     // indicates that this agent wants an offer
-    virtual bool respond_to_offer(std::shared_ptr<const Offer> offer);
+    virtual bool respond_to_offer(std::weak_ptr<const Offer> offer);
     // add offer to economy->market and myOffers
     void post_offer(std::shared_ptr<Offer> offer);
     // Checks current offers to decide whether to keep them on the market
@@ -185,8 +182,6 @@ protected:
     void accept_offer_response(std::shared_ptr<Offer> offer);
     // creates a new firm with this agent as the first owner
     virtual void create_firm();
-    // clear unavailable offers
-    friend void flush<Offer>(std::vector<std::shared_ptr<Offer>>& offers);
 };
 
 
@@ -214,7 +209,7 @@ protected:
 
     virtual void search_for_jobs() {}  // currently does nothing
     virtual void consume_goods() {}  // currently does nothing
-    virtual bool respond_to_jobOffer(std::shared_ptr<const JobOffer> jobOffer);
+    virtual bool respond_to_jobOffer(std::weak_ptr<const JobOffer> jobOffer);
 
 };
 
@@ -238,7 +233,7 @@ public:
     // analagous to Agent::review_offer_response
     virtual bool review_jobOffer_response(
         std::shared_ptr<Person> responder,
-        std::shared_ptr<const JobOffer> jobOffer
+        std::weak_ptr<const JobOffer> jobOffer
     );
 
 	double get_laborHired() const;

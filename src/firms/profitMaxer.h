@@ -42,11 +42,6 @@ protected:
     ProfitMaxer(
         std::shared_ptr<Economy> economy,
         std::shared_ptr<Agent> owner,
-        unsigned int outputIndex
-    );
-    ProfitMaxer(
-        std::shared_ptr<Economy> economy,
-        std::shared_ptr<Agent> owner,
         std::shared_ptr<VecToVec> prodFunc,
         std::shared_ptr<FirmDecisionMaker> decisionMaker
     );
@@ -71,50 +66,6 @@ protected:
     // extra input is labor, which is always the first input
     std::shared_ptr<VecToVec> prodFunc;
     std::shared_ptr<FirmDecisionMaker> decisionMaker;
-};
-
-struct BasicFirmDecisionMaker : FirmDecisionMaker {
-public:
-    BasicFirmDecisionMaker();
-    BasicFirmDecisionMaker(std::shared_ptr<ProfitMaxer> parent);
-    virtual Eigen::ArrayXd choose_production_inputs() override;
-    double choose_price(unsigned int idx);
-    void create_offer(
-        unsigned int idx,
-        std::vector<std::shared_ptr<Offer>>& offers,
-        double amountToOffer,
-        unsigned int numGoods
-    );
-    virtual std::vector<std::shared_ptr<Offer>> choose_good_offers() override;
-    virtual std::vector<Order<Offer>> choose_goods() override;
-    virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() override;
-protected:
-    std::vector<std::shared_ptr<Offer>> lastOffers;
-    std::vector<Order<Offer>> lastOrders;
-    std::vector<std::shared_ptr<JobOffer>> lastJobOffers;
-    double laborBudget = constants::defaultLaborBudget;
-    double wage = constants::defaultWage;
-
-    // helpers for choose_goods:
-    Eigen::ArrayXd get_total_quantities(const std::vector<Order<Offer>>& orders);
-    void compare_budgets(
-        double newBudget,
-        double& bestBudget,
-        double& bestRevenue,
-        const std::vector<std::shared_ptr<const Offer>> offers,
-        const Eigen::ArrayXd& sellingPrices
-    );
-    void evaluate_labor_demand(
-        const std::vector<Order<Offer>>& defaultOrders,
-        const std::vector<std::shared_ptr<const Offer>> offers,
-        const Eigen::ArrayXd& sellingPrices
-    );
-    std::vector<Order<Offer>> choose_goods(
-        double labor,
-        double money,
-        const std::vector<std::shared_ptr<const Offer>>& availOffers,
-        const Eigen::ArrayXd& sellingPrices
-    );
 };
 
 #endif

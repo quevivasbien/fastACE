@@ -4,7 +4,6 @@
 #include "base.h"
 #include "constants.h"
 #include "vecToScalar.h"
-// #include "solve.h"
 
 
 class UtilMaxer;
@@ -48,7 +47,6 @@ public:
     virtual std::string get_typename() const override;
 
 protected:
-    UtilMaxer(std::shared_ptr<Economy> economy);
     UtilMaxer(
         std::shared_ptr<Economy> economy,
         std::shared_ptr<VecToScalar> utilFunc,
@@ -79,16 +77,6 @@ protected:
 
     // calls goodConsumer->choose_goods_to_consume(), then removes those goods from inventory
     virtual void consume_goods() override;
-};
-
-
-struct BasicPersonDecisionMaker : PersonDecisionMaker {
-    BasicPersonDecisionMaker();
-    BasicPersonDecisionMaker(std::shared_ptr<UtilMaxer> parent);
-
-    virtual std::vector<Order<Offer>> choose_goods() override;
-    virtual std::vector<Order<JobOffer>> choose_jobs() override;
-    virtual Eigen::ArrayXd choose_goods_to_consume() override;
 };
 
 

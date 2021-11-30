@@ -18,7 +18,7 @@ bool Agent::time_step() {
         check_my_offers();
         {
             std::lock_guard<std::mutex> lock(myMutex);
-            flush<Offer>(myOffers);
+            flush(myOffers);
         }
         return true;  // completed successfully
     }
@@ -46,8 +46,8 @@ void Agent::add_money(double amount) {
 void Agent::post_offer(std::shared_ptr<Offer> offer) {
     std::lock_guard<std::mutex> lock(myMutex);
     // check that the offerer is the person listing it
-    assert(offer->offerer == shared_from_this());
-    economy->add_offer(offer);
+    assert(offer->offerer.lock() == shared_from_this());
+    economy->add_offer(std::weak_ptr<const Offer>(offer));
     myOffers.push_back(offer);
 }
 
@@ -96,11 +96,12 @@ void Agent::check_my_offers() {
     }
 }
 
-bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
+bool Agent::respond_to_offer(std::weak_ptr<const Offer> offer_) {
     // check that the agent actually has enough money, then send to offerer
+    auto offer = offer_.lock();
     if (money >= offer->price) {
         print_status(this, "Asking for offer acceptance...");
-        bool accepted = offer->offerer->review_offer_response(shared_from_this(), offer);
+        bool accepted = offer->offerer.lock()->review_offer_response(shared_from_this(), offer);
         if (accepted) {
             std::lock_guard<std::mutex> lock(myMutex);
             // complete the transaction on this end
@@ -114,18 +115,19 @@ bool Agent::respond_to_offer(std::shared_ptr<const Offer> offer) {
     return false;
 }
 
-bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::shared_ptr<const Offer> offer) {
+bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::weak_ptr<const Offer> offer) {
+    std::shared_ptr<const Offer> offer_ = offer.lock();
     std::shared_ptr<Offer> myCopy;
     {
         std::lock_guard<std::mutex> lock(myMutex);
         print_status(this, "Reviewing offer response...");
-        if (!offer->is_available()) {
+        if (!offer_->is_available()) {
             print_status(this, "Requested offer is not available.");
             return false;
         }
         // check that the offer is in myOffers
         for (auto myOffer : myOffers) {
-            if (myOffer == offer) {
+            if (myOffer == offer_) {
                 myCopy = myOffer;
                 break;
             }

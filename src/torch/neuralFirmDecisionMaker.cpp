@@ -154,7 +154,7 @@ std::vector<std::shared_ptr<JobOffer>> NeuralFirmDecisionMaker::choose_job_offer
         return offers;
     }
     else {
-        return std::vector<std::shared_ptr<JobOffer>>();
+        return {};
     }
 }
 

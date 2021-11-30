@@ -324,7 +324,7 @@ std::pair<torch::Tensor, torch::Tensor> AdvantageActorCritic::get_advantage_for_
         }
         else {
             print_status(
-                std::static_pointer_cast<ProfitMaxer>(firm),
+                firm,
                 "WARNING: Can't find in rewards || value map at time " + std::to_string(t)
             );
         }
