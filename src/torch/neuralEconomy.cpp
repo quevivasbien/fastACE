@@ -32,6 +32,14 @@ std::shared_ptr<NeuralEconomy> NeuralEconomy::init(
     return self;
 }
 
+std::shared_ptr<NeuralEconomy> NeuralEconomy::init_dummy(unsigned int numGoods) {
+    std::vector<std::string> goods(numGoods);
+    for (unsigned int i = 0; i < numGoods; i++) {
+        goods[i] = "good" + std::to_string(i);
+    }
+    return std::shared_ptr<NeuralEconomy>(new NeuralEconomy(goods, 0));
+}
+
 
 void NeuralEconomy::add_agent(std::shared_ptr<Person> person) {
     Economy::add_agent(person);

@@ -7,17 +7,19 @@ namespace neural {
 
 LRScheduler::LRScheduler(
     std::shared_ptr<torch::optim::Adam> optimizer,
-    float threshold,
-    unsigned int episodeGroupSize,
-    float decayMultiplier
+    unsigned int episodeBatchSize,
+    unsigned int patience,
+    float decayMultiplier,
+    std::string name
 ) : optimizer(optimizer),
-    threshold(threshold),
+    episodeBatchSize(episodeBatchSize),
+    patience(patience),
     decayMultiplier(decayMultiplier),
-    episodeGroupSize(episodeGroupSize)
+    name(name)
 {}
 
 void LRScheduler::decay_lr() {
-    pprint(1, "Decaying LR...");
+    pprint(1, "Decaying LR for " + name);
     for (auto& group : optimizer->param_groups()) {
         if (group.has_options()) {
             auto& options = static_cast<torch::optim::AdamOptions&>(group.options());
@@ -28,33 +30,26 @@ void LRScheduler::decay_lr() {
 
 void LRScheduler::update_lr(float loss) {
     lossHistory.push_back(loss);
-    int historySize = lossHistory.size();
-    // if (historySize >= 2 * episodeGroupSize) {
-    //     // get sum of recent loss values and of more distant loss values 
-    //     int recentCutoff = historySize - episodeGroupSize;
-    //     int distantCutoff = recentCutoff - episodeGroupSize;
-    //     float recentSum = 0.0;
-    //     for (int i = historySize - 1; i >= recentCutoff; i--) {
-    //         recentSum += lossHistory[i];
-    //     }
-    //     float distantSum = 0.0;
-    //     for (int i = recentCutoff - 1; i >= distantCutoff; i--) {
-    //         distantSum += lossHistory[i];
-    //     }
-    //     // if the difference between the two sums is small or positive, decay the learning rate
-    //     float diff = distantSum - recentSum;
-    //     if (diff < threshold) {
-    //         decay_lr();
-    //         // remove all but the most recent elements of the history,
-    //         // so we can't reduce the lr again for at least episodeGroupSize periods
-    //         std::vector<float>(
-    //             lossHistory.end() - episodeGroupSize, lossHistory.end()
-    //         ).swap(lossHistory);
-    //         threshold /= 2;
-    //     }
-    // }
-    if (historySize % 100 == 0) {
-        decay_lr();
+
+    if (lossHistory.size() == episodeBatchSize) {
+        float recentBatchLoss = 0.0;
+        for (auto x : lossHistory) {
+            recentBatchLoss += x;
+        }
+        if (recentBatchLoss < bestBatchLoss) {
+            bestBatchLoss = recentBatchLoss;
+            numBadBatches = 0;
+        }
+        else {
+            numBadBatches++;
+        }
+
+        if (numBadBatches >= patience) {
+            decay_lr();
+            numBadBatches = 0;
+        }
+
+        lossHistory.clear();
     }
 }
 
@@ -70,9 +65,9 @@ AdvantageActorCritic::AdvantageActorCritic(
     float jobOfferNetLR,
     float valueNetLR,
     float firmValueNetLR,
-    float scheduleThreshold,
-    unsigned int scheduleBatchInterval,
-    float scheduleDecayMultiplier
+    unsigned int episodeBatchSizeForLRDecay,
+    unsigned int patienceForLRDecay,
+    float multiplierForLRDecay
 ) : handler(handler),
     purchaseNetOptim(
         std::make_shared<Adam>(
@@ -131,39 +126,66 @@ AdvantageActorCritic::AdvantageActorCritic(
 
     purchaseNetScheduler(LRScheduler(
         purchaseNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "purchaseNet"
     )),
     firmPurchaseNetScheduler(LRScheduler(
         firmPurchaseNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "firmPurchaseNet"
     )),
     laborSearchNetScheduler(LRScheduler(
         laborSearchNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "laborSearchNet"
     )),
     consumptionNetScheduler(LRScheduler(
         consumptionNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "consumptionNet"
     )),
     productionNetScheduler(LRScheduler(
         productionNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "productionNet"
     )),
     offerNetScheduler(LRScheduler(
         offerNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "offerNet"
     )),
     jobOfferNetScheduler(LRScheduler(
         jobOfferNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "jobOfferNet"
     )),
     valueNetScheduler(LRScheduler(
         valueNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "valueNet"
     )),
     firmValueNetScheduler(LRScheduler(
         firmValueNetOptim,
-        scheduleThreshold, scheduleBatchInterval, scheduleDecayMultiplier
+        episodeBatchSizeForLRDecay,
+        patienceForLRDecay,
+        multiplierForLRDecay,
+        "firmValueNet"
     ))
 {}
 
@@ -181,9 +203,9 @@ AdvantageActorCritic::AdvantageActorCritic(
     initialLR,
     initialLR,
     initialLR,
-    DEFAULT_LR_SCHEDULE_THRESHOLD,
-    DEFAULT_LR_SCHEDULE_BATCH_INTERVAL,
-    DEFAULT_LR_SCHEDULE_DECAY_MULTIPLIER
+    DEFAULT_EPISODE_BATCH_SIZE_FOR_LR_DECAY,
+    DEFAULT_PATIENCE_FOR_LR_DECAY,
+    DEFAULT_MULTIPLIER_FOR_LR_DECAY
 ) {}
 
 AdvantageActorCritic::AdvantageActorCritic(
@@ -204,7 +226,10 @@ torch::Tensor AdvantageActorCritic::get_loss_from_logProba(
         if (logProbaSearch != logProbas[t].end()) {
             auto logProba = logProbaSearch->second;
             // std::cout << "logProba: " << logProba.item<float>() << std::endl;
-            loss = loss + logProba * advantage[t];
+            if (!std::isnan(logProba.item<float>())) {
+                // nan values mean that we shouldn't train on this datum
+                loss = loss + logProba * advantage[t];
+            }
         }
         else {
             print_status(
@@ -429,8 +454,8 @@ float AdvantageActorCritic::get_loss_for_persons_multithreaded() {
     auto persons = handler->economy->get_persons();
     std::vector<unsigned int> indices = get_indices_for_multithreading(persons.size());
     std::vector<std::thread> threads;
-    threads.reserve(constants::numThreads);
-    for (unsigned int i = 0; i < constants::numThreads; i++) {
+    threads.reserve(constants::config.numThreads);
+    for (unsigned int i = 0; i < constants::config.numThreads; i++) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
@@ -455,8 +480,8 @@ float AdvantageActorCritic::get_loss_for_firms_multithreaded() {
     auto firms = handler->economy->get_firms();
     std::vector<unsigned int> indices = get_indices_for_multithreading(firms.size());
     std::vector<std::thread> threads;
-    threads.reserve(constants::numThreads);
-    for (unsigned int i = 0; i < constants::numThreads; i++) {
+    threads.reserve(constants::config.numThreads);
+    for (unsigned int i = 0; i < constants::config.numThreads; i++) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
@@ -639,7 +664,7 @@ float AdvantageActorCritic::train_on_episode() {
     zero_all_grads();
     update_lr_schedulers();
     float loss_ = 0.0;
-    if (constants::multithreaded) {
+    if (constants::config.multithreaded) {
         // loss_ += get_loss_multithreaded();
         loss_ += get_loss_for_persons_multithreaded();
         loss_ += get_loss_for_firms_multithreaded();

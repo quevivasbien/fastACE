@@ -119,11 +119,20 @@ DecisionNetHandler::DecisionNetHandler(
     valueNet(valueNet),
     firmValueNet(firmValueNet)
 {
-    time_step();
+    if (economy != nullptr) {
+        time_step();
+    }
 };
 
 
-DecisionNetHandler::DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy) : economy(economy) {
+DecisionNetHandler::DecisionNetHandler(
+    std::shared_ptr<NeuralEconomy> economy,
+    unsigned int stackSize,
+    unsigned int encodingSize,
+    unsigned int hiddenSize,
+    unsigned int nHidden,
+    unsigned int nHiddenSmall
+) : economy(economy) {
     int numGoods = economy->get_numGoods();
     // NOTE: numUtilParams assumes persons have CES utility functions,
     // with goods + labor + tfp + elasticity as params
@@ -132,87 +141,99 @@ DecisionNetHandler::DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy) :
     int numProdFuncParams = numUtilParams * numGoods;
 
     offerEncoder = std::make_shared<OfferEncoder>(
-        DEFAULT_STACK_SIZE,
+        stackSize,
         numGoods + 1,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN,
-        DEFAULT_ENCODING_SIZE
+        hiddenSize,
+        nHidden,
+        encodingSize
     );
     jobOfferEncoder = std::make_shared<OfferEncoder>(
-        DEFAULT_STACK_SIZE,
+        stackSize,
         2,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN,
-        DEFAULT_ENCODING_SIZE
+        hiddenSize,
+        nHidden,
+        encodingSize
     );
     purchaseNet = std::make_shared<PurchaseNet>(
         offerEncoder,
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     firmPurchaseNet = std::make_shared<PurchaseNet>(
         offerEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     laborSearchNet = std::make_shared<PurchaseNet>(
         jobOfferEncoder,
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     consumptionNet = std::make_shared<ConsumptionNet>(
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     productionNet = std::make_shared<ConsumptionNet>(
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     offerNet = std::make_shared<OfferNet>(
         offerEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN,
-        DEFAULT_N_HIDDEN_SMALL
+        hiddenSize,
+        hiddenSize,
+        nHidden,
+        nHiddenSmall
     );
     jobOfferNet = std::make_shared<JobOfferNet>(
         jobOfferEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     valueNet = std::make_shared<ValueNet>(
         offerEncoder,
         jobOfferEncoder,
         numUtilParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
     firmValueNet = std::make_shared<ValueNet>(
         offerEncoder,
         jobOfferEncoder,
         numProdFuncParams,
         numGoods,
-        DEFAULT_HIDDEN_SIZE,
-        DEFAULT_N_HIDDEN
+        hiddenSize,
+        nHidden
     );
-
-    time_step();
+    if (economy != nullptr) {
+        time_step();
+    }
 }
+
+DecisionNetHandler::DecisionNetHandler(
+    std::shared_ptr<NeuralEconomy> economy
+) : DecisionNetHandler(
+    economy,
+    DEFAULT_stackSize,
+    DEFAULT_encodingSize,
+    DEFAULT_hiddenSize,
+    DEFAULT_nHidden,
+    DEFAULT_nHiddenSmall
+) {}
 
 
 void DecisionNetHandler::update_encodedOffers() {
@@ -379,7 +400,8 @@ std::vector<Order<Offer>> DecisionNetHandler::get_offers_to_request(
 ) {
     if (offerIndices.size(0) == 0) {
         std::lock_guard<std::mutex> lock(purchaseNetMutex);
-        purchaseNetLogProba[time-1][caller] = torch::tensor(0.0);
+        // record nan value in logProba history to signal that there was no decision to be made
+        purchaseNetLogProba[time-1][caller] = torch::tensor(nanf(""));
         return {};
     }
     // std::cout << "using purchaseNet" << std::endl;
@@ -407,7 +429,7 @@ std::vector<Order<Offer>> DecisionNetHandler::firm_get_offers_to_request(
 ) {
     if (offerIndices.size(0) == 0) {
         std::lock_guard<std::mutex> lock(firmPurchaseNetMutex);
-        firmPurchaseNetLogProba[time-1][caller] = torch::tensor(0.0);
+        firmPurchaseNetLogProba[time-1][caller] = torch::tensor(nanf(""));
         return {};
     }
     // std::cout << "using firmPurchaseNet" << std::endl;
@@ -610,9 +632,9 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     auto wage_pair = sample_logNormal(wage_params);
     double wage = wage_pair.first.item<double>();
     // clip wage to avoid inf values
-    if (wage > constants::largeNumber) {
-        wage = constants::largeNumber;
-        pprint(2, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
+    if (wage > constants::config.largeNumber) {
+        wage = constants::config.largeNumber;
+        pprint(2, "Note: Clipped wage to " + std::to_string(constants::config.largeNumber));
     }
 
     {

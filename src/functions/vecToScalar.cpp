@@ -110,7 +110,7 @@ CES::CES(
     substitutionParam(1 / (1-elasticityOfSubstitution)) {}
 
 double CES::get_inner_sum(const Vec& quantities) const {
-    return (shareParams * Eigen::pow(quantities + constants::eps, substitutionParam)).sum();
+    return (shareParams * Eigen::pow(quantities + constants::config.eps, substitutionParam)).sum();
 }
 
 double CES::f(const Vec& quantities) const {

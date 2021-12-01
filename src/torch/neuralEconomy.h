@@ -1,8 +1,6 @@
 #ifndef NEURAL_ECONOMY_H
 #define NEURAL_ECONOMY_H
 
-#define _USE_MATH_DEFINES
-#include <cmath>
 
 #include <torch/torch.h>
 #include <vector>
@@ -11,6 +9,8 @@
 #include <mutex>
 #include <utility>
 #include <Eigen/Dense>
+#include <cmath>
+#include "neuralConstants.h"
 #include "base.h"
 #include "utilMaxer.h"
 #include "profitMaxer.h"
@@ -19,14 +19,6 @@
 
 namespace neural {
 
-// Helpful constants :)
-const double SQRT2PI = 2 / (M_2_SQRTPI * M_SQRT1_2);
-
-const int DEFAULT_STACK_SIZE = 10;
-const int DEFAULT_ENCODING_SIZE = 10;
-const int DEFAULT_HIDDEN_SIZE = 100;
-const int DEFAULT_N_HIDDEN = 6;
-const int DEFAULT_N_HIDDEN_SMALL = 3;
 
 // forward declaration
 struct DecisionNetHandler;
@@ -50,6 +42,8 @@ public:
         unsigned int maxAgents,
         std::shared_ptr<DecisionNetHandler> handler_
     );
+    
+    static std::shared_ptr<NeuralEconomy> init_dummy(unsigned int numGoods);
 
     virtual void add_agent(std::shared_ptr<Person> person) override;
     virtual void add_agent(std::shared_ptr<Firm> firm) override;
@@ -194,6 +188,15 @@ struct DecisionNetHandler {
         std::shared_ptr<ValueNet> valueNet,
         std::shared_ptr<ValueNet> firmValueNet
 	);
+
+    DecisionNetHandler(
+        std::shared_ptr<NeuralEconomy> economy,
+        unsigned int stackSize,
+        unsigned int encodingSize,
+        unsigned int hiddenSize,
+        unsigned int nHidden,
+        unsigned int nHiddenSmall
+    );
 
     DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy);
 

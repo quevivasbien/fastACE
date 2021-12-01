@@ -5,29 +5,26 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <cmath>
 #include "neuralEconomy.h"
 #include "utilMaxer.h"
 #include "profitMaxer.h"
 #include "util.h"
 #include "constants.h"
-
-
+#include "neuralConstants.h"
 
 
 namespace neural {
 
-const float DEFAULT_LEARNING_RATE = 0.001;
-const float DEFAULT_LR_SCHEDULE_THRESHOLD = 0.1;
-const unsigned int DEFAULT_LR_SCHEDULE_BATCH_INTERVAL = 40;
-const float DEFAULT_LR_SCHEDULE_DECAY_MULTIPLIER = 0.5;
-
 
 struct LRScheduler {
+    // Performs a function similar to torch's ReduceLROnPlateau
     LRScheduler(
         std::shared_ptr<torch::optim::Adam> optimizer,
-        float threshold,
-        unsigned int episodeGroupSize,
-        float decayMultiplier
+        unsigned int episodeBatchSize,
+        unsigned int patience,
+        float decayMultiplier,
+        std::string name
     );
 
     void decay_lr();
@@ -35,9 +32,14 @@ struct LRScheduler {
 
     std::shared_ptr<torch::optim::Adam> optimizer;
     std::vector<float> lossHistory;
-    float threshold;
+    unsigned int episodeBatchSize;
+    unsigned int patience;
     float decayMultiplier;
-    unsigned int episodeGroupSize;
+
+    float bestBatchLoss = HUGE_VALF;
+    unsigned int numBadBatches = 0;
+
+    std::string name;
 };
 
 
@@ -55,9 +57,9 @@ struct AdvantageActorCritic {
         float jobOfferNetLR,
         float valueNetLR,
         float firmValueNetLR,
-        float scheduleThreshold,
-        unsigned int scheduleBatchInterval,
-        float scheduleDecayMultipler
+        unsigned int episodeBatchSizeForLRDecay,
+        unsigned int patienceForLRDecay,
+        float multiplierForLRDecay
     );
 
     AdvantageActorCritic(

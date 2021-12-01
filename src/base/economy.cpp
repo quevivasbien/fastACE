@@ -68,8 +68,8 @@ void run_agents(const std::vector<std::shared_ptr<A>>* const agents) {
     // runs time_step for a vector of agents, multithreaded
     std::vector<unsigned int> indices = get_indices_for_multithreading(agents->size());
     std::vector<std::thread> threads;
-    threads.reserve(constants::numThreads);
-    for (unsigned int i = 0; i < constants::numThreads; i++) {
+    threads.reserve(constants::config.numThreads);
+    for (unsigned int i = 0; i < constants::config.numThreads; i++) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
@@ -104,7 +104,7 @@ bool Economy::time_step() {
     std::shuffle(std::begin(persons), std::end(persons), rng);
     std::shuffle(std::begin(firms), std::end(firms), rng);
     // persons go first, then firms
-    if (constants::multithreaded) {
+    if (constants::config.multithreaded) {
         run_agents(&persons);
         run_agents(&firms);
     }
@@ -118,10 +118,10 @@ bool Economy::time_step() {
     }
     flush(market);
     flush(jobMarket);
-    if (constants::verbose >= 3) {
+    if (constants::config.verbose >= 3) {
         print_summary();
     }
-    if (constants::verbose >= 4) {
+    if (constants::config.verbose >= 4) {
         for (auto person : persons) {
             person->print_summary();
         }

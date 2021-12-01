@@ -2,3 +2,4 @@ test*
 libtorch
 CMakeFiles
 .vscode
+*.pt

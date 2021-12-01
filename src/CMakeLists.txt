@@ -25,5 +25,5 @@ find_package(Torch REQUIRED)
 target_link_libraries(lib PUBLIC "${TORCH_LIBRARIES}")
 
 
-add_library(pybindings SHARED "pybindings.cpp")
+add_library(pybindings SHARED pybindings.h pybindings.cpp)
 target_link_libraries(pybindings PRIVATE lib)

@@ -1,28 +1,39 @@
-#include <cstddef>
 #include <vector>
 #include <iostream>
-#include "neuralScenarios.h"
+#include "pybindings.h"
 
-extern "C" {
-    void train(
-        float* output,
-        unsigned int numPersons,
-        unsigned int numFirms,
-        float initialLR,
-        unsigned int numEpisodes,
-        unsigned int episodeLength
+
+neural::CustomScenarioParams create_scenario_params(
+    unsigned int numPeople,
+    unsigned int numFirms
+) {
+    return neural::CustomScenarioParams(numPeople, numFirms);
+}
+
+neural::TrainingParams create_training_params(
+    unsigned int numEpisodes,
+    unsigned int episodeLength,
+    unsigned int updateEveryNEpisodes,
+    unsigned int checkpointEveryNEpisodes
+) {
+    return neural::TrainingParams(
+        numEpisodes,
+        episodeLength,
+        updateEveryNEpisodes,
+        checkpointEveryNEpisodes
     );
 }
 
+
 void train(
     float* output,
-    unsigned int numPersons,
-    unsigned int numFirms,
-    float initialLR,
-    unsigned int numEpisodes,
-    unsigned int episodeLength
+    neural::CustomScenarioParams scenarioParams,
+    neural::TrainingParams trainingParams
 ) {
-    auto scenario = std::make_shared<neural::VariablePopulationScenario>(numPersons, numFirms);
-    std::vector<float> losses = neural::train(scenario, initialLR, numEpisodes, episodeLength);
+    std::vector<float> losses = neural::train(
+        scenarioParams,
+        trainingParams
+    );
+    
     std::copy(losses.begin(), losses.end(), output);
 }

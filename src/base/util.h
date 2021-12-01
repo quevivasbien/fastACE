@@ -82,29 +82,51 @@ void flush(
 
 // helper for dividing up agents to be operated on by multiple threads
 inline std::vector<unsigned int> get_indices_for_multithreading(unsigned int numAgents) {
-    unsigned int agentsPerThread = numAgents / constants::numThreads;
-    unsigned int extras = numAgents % constants::numThreads;
-    std::vector<unsigned int> indices(constants::numThreads + 1);
+    unsigned int agentsPerThread = numAgents / constants::config.numThreads;
+    unsigned int extras = numAgents % constants::config.numThreads;
+    std::vector<unsigned int> indices(constants::config.numThreads + 1);
     indices[0] = 0;
-    for (unsigned int i = 1; i <= constants::numThreads; i++) {
+    for (unsigned int i = 1; i <= constants::config.numThreads; i++) {
         indices[i] = indices[i-1] + agentsPerThread + (i <= extras);
     }
     return indices;
 }
 
 
-// FUNCTIONS FOR PRINTING BASED ON VALUE OF constants::verbose
+template <typename T>
+T make_positive(T x) {
+    if (x <= 0) {
+        return constants::config.eps;
+    }
+    else {
+        return x;
+    }
+}
+
+template <typename T>
+T make_nonnegative(T x) {
+    if (x < 0) {
+        return 0.0;
+    }
+    else {
+        return x;
+    }
+}
+
+
+
+// FUNCTIONS FOR PRINTING BASED ON VALUE OF constants::config.verbose
 
 // pprint = priority print
 inline void pprint(unsigned int priority, const std::string& message) {
-    if (constants::verbose >= priority) {
+    if (constants::config.verbose >= priority) {
         std::cout << message << std::endl;
     }
 }
 
 template <typename ... Args>
 void pprint(unsigned int priority, Args&& ... args) {
-    if (constants::verbose >= priority) {
+    if (constants::config.verbose >= priority) {
         for (auto arg : {args...}) {
     		std::cout << arg << ' ';
     	}
@@ -129,7 +151,7 @@ void pprint_status(
     T* origin,
     const std::string& status
 ) {
-    if (constants::verbose >= priority) {
+    if (constants::config.verbose >= priority) {
         std::cout << origin
             << " (" << origin->get_typename() << ") : "
             << status << '\n';
@@ -142,7 +164,7 @@ void pprint_status(
     std::shared_ptr<T> origin,
     const std::string& status
 ) {
-    if (constants::verbose >= priority) {
+    if (constants::config.verbose >= priority) {
         std::cout << origin
             << " (" << origin->get_typename() << ") : "
             << status << '\n';
@@ -168,7 +190,7 @@ inline void pprint_time_elasped(
     std::chrono::time_point<std::chrono::system_clock> end_time
 ) {
     std::chrono::duration<double> elasped_seconds = end_time - start_time;
-    if (constants::verbose >= priority) {
+    if (constants::config.verbose >= priority) {
         std::cout << elasped_seconds.count() << "s" << std::endl;
     }
 }

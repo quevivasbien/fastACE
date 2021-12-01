@@ -11,9 +11,15 @@ int main(int argc, char *argv[]) {
     int numEpisodes = (argc > 3) ? std::stoul(argv[3]) : 10;
     int episodeLength = (argc > 4) ? std::stoul(argv[4]) : 10;
 
-    auto scenario = std::make_shared<neural::VariablePopulationScenario>(numPersons, numFirms);
+    auto scenario = std::make_shared<neural::CustomScenario>(numPersons, numFirms);
 
-    neural::train(scenario, neural::DEFAULT_LEARNING_RATE, numEpisodes, episodeLength);
+    neural::train(
+        scenario,
+        numEpisodes,
+        episodeLength,
+        10,  // num episodes between printed updates
+        10  // num episodes between model checkpoints
+    );
 
     return 0;
 }
