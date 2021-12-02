@@ -1,10 +1,13 @@
 #ifndef PYBINDINGS_H
 #define PYBINDINGS_H
 
+#include "constants.h"
 #include "neuralScenarios.h"
 
 
 extern "C" {
+    auto* get_config();
+
     neural::CustomScenarioParams create_scenario_params(
         unsigned int numPeople,
         unsigned int numFirms

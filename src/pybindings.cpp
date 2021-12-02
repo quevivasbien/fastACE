@@ -3,6 +3,10 @@
 #include "pybindings.h"
 
 
+auto* get_config() {
+    return &constants::config;
+}
+
 neural::CustomScenarioParams create_scenario_params(
     unsigned int numPeople,
     unsigned int numFirms

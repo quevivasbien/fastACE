@@ -8,6 +8,15 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 lib = ctypes.CDLL("../bin/libpybindings.so")
 
+class Config(ctypes.Structure):
+    _fields_ = [
+        ('verbose', ctypes.c_uint),
+        ('eps', ctypes.c_double),
+        ('largeNumber', ctypes.c_double),
+        ('multithreaded', ctypes.c_bool),
+        ('numThreads', ctypes.c_uint)
+    ]
+
 class CustomScenarioParams(ctypes.Structure):
     _fields_ = [
         ('numPeople', ctypes.c_uint),
@@ -82,6 +91,10 @@ class TrainingParams(ctypes.Structure):
         ('multiplierForLRDecay', ctypes.c_float)
     ]
 
+
+lib.get_config.restype = ctypes.POINTER(Config)
+
+
 lib.create_scenario_params.argtypes = [
     ctypes.c_uint,
     ctypes.c_uint
@@ -112,18 +125,64 @@ def train(scenarioParams, trainingParams):
     return list(losses)
 
 
-if __name__ == '__main__':
-    args = sys.argv
-    numPersons = int(args[1])
-    numFirms = int(args[2])
-    numEpisodes = int(args[3])
-    episodeLength = int(args[4])
+def dict_from_cstruct(struct):
+    fields = [field[0] for field in getattr(struct, '_fields_')]
+    return {field: getattr(struct, field) for field in fields}
 
-    scenarioParams = lib.create_scenario_params(numPersons, numFirms)
-    trainingParams = lib.create_training_params(numEpisodes, episodeLength, 10, 10)
 
-    losses = train(scenarioParams, trainingParams)
-    plt.plot(losses, marker='.', linestyle='', alpha=0.3)
-    plt.xlabel('episode')
-    plt.ylabel('loss')
-    plt.show()
+class RuntimeManager:
+
+    def __init__(
+        self,
+        numPersons,
+        numFirms,
+        numEpisodes,
+        episodeLength,
+        updateEveryNEpisodes=10,
+        checkpointEveryNEpisodes=10
+    ):
+        self.config = lib.get_config()
+        self.scenarioParams = lib.create_scenario_params(
+            numPersons,
+            numFirms
+        )
+        self.trainingParams = lib.create_training_params(
+            numEpisodes,
+            episodeLength,
+            updateEveryNEpisodes,
+            checkpointEveryNEpisodes
+        )
+    
+    def edit_config(self, attr, new_value):
+        setattr(self.config.contents, attr, new_value)
+    
+    def view_config(self):
+        return dict_from_cstruct(self.config.contents)
+    
+    def edit_scenario_params(self, attr, new_value):
+        setattr(self.scenarioParams, attr, new_value)
+    
+    def view_scenario_params(self):
+        return dict_from_cstruct(self.scenarioParams)
+
+    def edit_training_params(self, attr, new_value):
+        setattr(self.trainingParams, attr, new_value)
+    
+    def view_training_params(self):
+        return dict_from_cstruct(self.trainingParams)
+    
+    def train(self, plot=True):
+        losses = ctypes.ARRAY(
+            ctypes.c_float, self.trainingParams.numEpisodes
+        )()
+        lib.train(
+            losses, self.scenarioParams, self.trainingParams
+        )
+        losses = list(losses)
+        if plot:
+            plt.plot(losses, marker='.', linestyle='', alpha=0.3)
+            plt.xlabel('episode')
+            plt.ylabel('loss')
+            plt.show()
+        return losses
+    
