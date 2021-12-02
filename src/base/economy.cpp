@@ -12,6 +12,7 @@ void Economy::add_agent(std::shared_ptr<Person> person) {
     std::lock_guard<std::mutex> lock(mutex);
     assert(person->get_economy() == shared_from_this());
     persons.push_back(person);
+    persons_weak.push_back(std::weak_ptr<Person>(person));
 }
 
 std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
@@ -22,15 +23,20 @@ void Economy::add_agent(std::shared_ptr<Firm> firm) {
     std::lock_guard<std::mutex> lock(mutex);
     assert(firm->get_economy() == shared_from_this());
     firms.push_back(firm);
+    firms_weak.push_back(std::weak_ptr<Firm>(firm));
 }
 
-const std::string* Economy::get_name_for_good_id(unsigned int id) const {
-    return &goods[id];
+const std::string& Economy::get_name_for_good_id(unsigned int id) const {
+    return goods[id];
 }
 
-const std::vector<std::shared_ptr<Person>>& Economy::get_persons() const { return persons; }
+const std::vector<std::weak_ptr<Person>>& Economy::get_persons() const {
+    return persons_weak;
+}
 
-const std::vector<std::shared_ptr<Firm>>& Economy::get_firms() const { return firms; }
+const std::vector<std::weak_ptr<Firm>>& Economy::get_firms() const { 
+    return firms_weak;
+}
 
 const std::vector<std::string>& Economy::get_goods() const { return goods; }
 
@@ -130,6 +136,10 @@ bool Economy::time_step() {
         }
     }
     return true;
+}
+
+unsigned int Economy::get_time() const {
+    return time;
 }
 
 

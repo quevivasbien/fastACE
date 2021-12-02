@@ -1,13 +1,14 @@
 #ifndef BASE_H
 #define BASE_H
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <memory>
-#include <thread>
-#include <mutex>
+#include <algorithm>
 #include <assert.h>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 #include <Eigen/Dense>
 #include "util.h"
 
@@ -84,17 +85,17 @@ public:
     virtual ~Economy() {}
 
     virtual bool time_step();
-    unsigned int get_time() const { return time; };
+    unsigned int get_time() const;
 
-    virtual std::shared_ptr<Person> add_person();
-    virtual std::shared_ptr<Firm> add_firm(std::shared_ptr<Agent> firstOwner);
-    virtual void add_agent(std::shared_ptr<Person> person);
-    virtual void add_agent(std::shared_ptr<Firm> firm);
+    std::shared_ptr<Person> add_person();
+    std::shared_ptr<Firm> add_firm(std::shared_ptr<Agent> firstOwner);
+    void add_agent(std::shared_ptr<Person> person);
+    void add_agent(std::shared_ptr<Firm> firm);
 
-    const std::string* get_name_for_good_id(unsigned int id) const;
+    const std::string& get_name_for_good_id(unsigned int id) const;
 
-    const std::vector<std::shared_ptr<Person>>& get_persons() const;
-    const std::vector<std::shared_ptr<Firm>>& get_firms() const;
+    const std::vector<std::weak_ptr<Person>>& get_persons() const;
+    const std::vector<std::weak_ptr<Firm>>& get_firms() const;
     const std::vector<std::string>& get_goods() const;
     unsigned int get_numGoods() const;
     const std::vector<std::weak_ptr<const Offer>>& get_market() const;
@@ -110,6 +111,10 @@ public:
 protected:
     std::vector<std::shared_ptr<Person>> persons;
     std::vector<std::shared_ptr<Firm>> firms;
+    // persons_weak and firms_weak are to make sharing agents lists easier
+    // without sharing ownership
+    std::vector<std::weak_ptr<Person>> persons_weak;
+    std::vector<std::weak_ptr<Firm>> firms_weak;
     // the names of goods for sale
     /// normally these goods will be referred to by their indices in the goods list
     std::vector<std::string> goods;

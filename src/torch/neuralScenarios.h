@@ -27,17 +27,16 @@ struct NeuralScenario : Scenario {
     std::shared_ptr<AdvantageActorCritic> trainer;
 
     std::shared_ptr<NeuralEconomy> get_economy(
-        std::vector<std::string> goods,
-        unsigned int maxAgents
+        std::vector<std::string> goods
     ) {
         std::shared_ptr<NeuralEconomy> economy;
         // if handler not yet initialized, initialize as default handler
         if (handler == nullptr) {
-            economy = NeuralEconomy::init(goods, maxAgents);
-            handler = economy->handler;
+            economy = NeuralEconomy::init(goods);
+            handler = economy->handler.lock();
         }
         else {
-            economy = NeuralEconomy::init(goods, maxAgents, handler);
+            economy = NeuralEconomy::init(goods, handler);
             handler->reset(economy);
         }
         // also make sure trainer is initialized
@@ -57,7 +56,7 @@ struct SimpleScenario : NeuralScenario {
     ) : NeuralScenario(trainer) {}
 
     virtual std::shared_ptr<Economy> setup() {
-        std::shared_ptr<NeuralEconomy> economy = get_economy({"bread", "capital"}, 3);
+        std::shared_ptr<NeuralEconomy> economy = get_economy({"bread", "capital"});
 
         UtilMaxer::init(
             economy,
@@ -187,8 +186,7 @@ struct CustomScenario : NeuralScenario {
 
     virtual std::shared_ptr<Economy> setup() {
         std::shared_ptr<NeuralEconomy> economy = get_economy(
-            {"bread", "capital"},
-            params.numPeople + params.numFirms
+            {"bread", "capital"}
         );
 
         auto rng = economy->get_rng();

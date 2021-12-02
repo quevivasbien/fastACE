@@ -1,8 +1,9 @@
 #include <limits>
 #include "profitMaxer.h"
 
+FirmDecisionMaker::FirmDecisionMaker() {}
 
-FirmDecisionMaker::FirmDecisionMaker(std::shared_ptr<ProfitMaxer> parent) : parent(parent) {}
+FirmDecisionMaker::FirmDecisionMaker(std::weak_ptr<ProfitMaxer> parent) : parent(parent) {}
 
 
 ProfitMaxer::ProfitMaxer(
@@ -33,7 +34,7 @@ ProfitMaxer::ProfitMaxer(
 
 void ProfitMaxer::init_decisionMaker() {
     // this assertion is to make sure that the decisionMaker doesn't get assigned to more than one ProfitMaxer
-    assert(decisionMaker->parent == nullptr);
+    assert(decisionMaker->parent.lock() == nullptr);
     decisionMaker->parent = std::static_pointer_cast<ProfitMaxer>(shared_from_this());
 }
 

@@ -8,23 +8,24 @@ const double LABOR_AMOUNT_PER_OFFER = 0.5;
 
 
 NeuralFirmDecisionMaker::NeuralFirmDecisionMaker(
-    std::shared_ptr<ProfitMaxer> parent,
-    std::shared_ptr<DecisionNetHandler> guide
+    std::weak_ptr<ProfitMaxer> parent,
+    std::weak_ptr<DecisionNetHandler> guide
 ) : FirmDecisionMaker(parent), guide(guide) {}
 
 NeuralFirmDecisionMaker::NeuralFirmDecisionMaker(
-    std::shared_ptr<DecisionNetHandler> guide
-) : NeuralFirmDecisionMaker(nullptr, guide) {}
+    std::weak_ptr<DecisionNetHandler> guide
+) : guide(guide) {}
 
 
 void NeuralFirmDecisionMaker::confirm_synchronized() {
-    if (parent->get_time() > guide->time) {
-        guide->time_step();
-    }
-    if (parent->get_time() > time) {
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
+    guide_->synchronize_time(parent_);
+    if (parent_->get_time() > time) {
         prodFuncParams = get_prodFuncParams();
-        myOfferIndices = guide->firm_generate_offerIndices();
-        myJobOfferIndices = guide->firm_generate_jobOfferIndices();
+        myOfferIndices = guide_->firm_generate_offerIndices();
+        myJobOfferIndices = guide_->firm_generate_jobOfferIndices();
         record_state_value();
         record_profit();
         time++;
@@ -34,7 +35,9 @@ void NeuralFirmDecisionMaker::confirm_synchronized() {
 Eigen::ArrayXd NeuralFirmDecisionMaker::get_prodFuncParams() const {
     // NOTE: This only works if the parent has a SumOfVecToVec production function
     // with VToVFromVToS<CES> innerFunctions.
-    auto prodFunc = std::static_pointer_cast<const SumOfVecToVec>(parent->get_prodFunc());
+    auto parent_ = parent.lock();
+    assert(parent_ != nullptr);
+    auto prodFunc = std::static_pointer_cast<const SumOfVecToVec>(parent_->get_prodFunc());
     unsigned int componentSize = prodFunc->numInputs + 2;
     Eigen::ArrayXXd prodFuncParams(componentSize, prodFunc->numInnerFunctions);
     for (unsigned int i = 0; i < prodFunc->numInnerFunctions; i++) {
@@ -45,64 +48,79 @@ Eigen::ArrayXd NeuralFirmDecisionMaker::get_prodFuncParams() const {
 }
 
 void NeuralFirmDecisionMaker::record_state_value() {
-    guide->firm_record_value(
-        parent,
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
+    guide_->firm_record_value(
+        parent_.get(),
         myOfferIndices,
         myJobOfferIndices,
         prodFuncParams,
-        parent->get_money(),
-        parent->get_laborHired(),
-        parent->get_inventory()
+        parent_->get_money(),
+        parent_->get_laborHired(),
+        parent_->get_inventory()
     );
 }
 
 void NeuralFirmDecisionMaker::record_profit() {
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
     if (time > 0) {
-        double profit = parent->get_money() - last_money;
-        guide->record_reward(parent, profit, 1);
+        double profit = parent_->get_money() - last_money;
+        guide_->record_reward(parent_, profit, 1);
     }
-    last_money = parent->get_money();
+    last_money = parent_->get_money();
 }
 
 
 std::vector<Order<Offer>> NeuralFirmDecisionMaker::choose_goods() {
     confirm_synchronized();
-    
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
+
     // get & return offer requests
-    return guide->firm_get_offers_to_request(
-        parent,
+    return guide_->firm_get_offers_to_request(
+        parent_.get(),
         myOfferIndices,
         prodFuncParams,
-        parent->get_money(),
-        parent->get_laborHired(),
-        parent->get_inventory()
+        parent_->get_money(),
+        parent_->get_laborHired(),
+        parent_->get_inventory()
     );
 }
 
 
 Eigen::ArrayXd NeuralFirmDecisionMaker::choose_production_inputs() {
     confirm_synchronized();
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
 
-    return parent->get_inventory() * guide->get_production_proportions(
-        parent,
+    return parent_->get_inventory() * guide_->get_production_proportions(
+        parent_.get(),
         prodFuncParams,
-        parent->get_money(),
-        parent->get_laborHired(),
-        parent->get_inventory()
+        parent_->get_money(),
+        parent_->get_laborHired(),
+        parent_->get_inventory()
     );
 }
 
 
 std::vector<std::shared_ptr<Offer>> NeuralFirmDecisionMaker::choose_good_offers() {
     confirm_synchronized();
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
 
-    auto amt_price_pair = guide->choose_offers(
-        parent,
+    auto amt_price_pair = guide_->choose_offers(
+        parent_.get(),
         myOfferIndices,
         prodFuncParams,
-        parent->get_money(),
-        parent->get_laborHired(),
-        parent->get_inventory()
+        parent_->get_money(),
+        parent_->get_laborHired(),
+        parent_->get_inventory()
     );
 
     Eigen::ArrayXd amounts = amt_price_pair.first;
@@ -130,14 +148,17 @@ std::vector<std::shared_ptr<Offer>> NeuralFirmDecisionMaker::choose_good_offers(
 
 std::vector<std::shared_ptr<JobOffer>> NeuralFirmDecisionMaker::choose_job_offers() {
     confirm_synchronized();
+    auto guide_ = guide.lock();
+    auto parent_ = parent.lock();
+    assert(guide_ != nullptr && parent_ != nullptr);
 
-    auto labor_wage_pair = guide->choose_job_offers(
-        parent,
+    auto labor_wage_pair = guide_->choose_job_offers(
+        parent_.get(),
         myJobOfferIndices,
         prodFuncParams,
-        parent->get_money(),
-        parent->get_laborHired(),
-        parent->get_inventory()
+        parent_->get_money(),
+        parent_->get_laborHired(),
+        parent_->get_inventory()
     );
 
     double laborAmount = labor_wage_pair.first;

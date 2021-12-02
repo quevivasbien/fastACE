@@ -178,8 +178,7 @@ void Agent::print_summary() const {
     std::cout << "Time: " << time << "\n\n";
     std::cout << "Inventory:\n";
     for (unsigned int i = 0; i < economy->get_numGoods(); i++) {
-        const std::string* good_name = economy->get_name_for_good_id(i);
-        std::cout << *good_name << ": " << inventory(i) << '\n';
+        std::cout << economy->get_name_for_good_id(i) << ": " << inventory(i) << '\n';
     }
     std::cout << "\nMoney: " << money << "\n\n";
 }

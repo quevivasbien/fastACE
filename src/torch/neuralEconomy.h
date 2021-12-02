@@ -26,44 +26,25 @@ struct DecisionNetHandler;
 
 class NeuralEconomy : public Economy {
     /**
-    This is an economy that keeps track of all agents in an unordered map,
-    and assigns each agent a unique int id;
-    this is necessary for use with neural net decision makers.
-    maxAgents is the maximum number of unique Agents that can be created in this economy.
-    totalAgents is the number of unique Agents that have been created so far.
+    This is an economy that is designed to interact with a DecisionNetHandler
     */
 public:
     static std::shared_ptr<NeuralEconomy> init(
-        std::vector<std::string> goods,
-        unsigned int maxAgents
+        std::vector<std::string> goods
     );
     static std::shared_ptr<NeuralEconomy> init(
         std::vector<std::string> goods,
-        unsigned int maxAgents,
-        std::shared_ptr<DecisionNetHandler> handler_
+        std::shared_ptr<DecisionNetHandler> handler
     );
     
     static std::shared_ptr<NeuralEconomy> init_dummy(unsigned int numGoods);
 
-    virtual void add_agent(std::shared_ptr<Person> person) override;
-    virtual void add_agent(std::shared_ptr<Firm> firm) override;
-    
-    std::shared_ptr<DecisionNetHandler> handler = nullptr;
-
-    unsigned int get_id_for_agent(std::shared_ptr<Agent> agent);
-    unsigned int get_totalAgents() const;
-    unsigned int get_maxAgents() const;
+    std::weak_ptr<DecisionNetHandler> handler;
 
     virtual std::string get_typename() const;
 
 protected:
-    NeuralEconomy(std::vector<std::string> goods, unsigned int maxAgents);
-
-    void update_agentMap(std::shared_ptr<Agent> agent);
-
-    std::unordered_map<std::shared_ptr<Agent>, unsigned int> agentMap;
-    unsigned int totalAgents = 0;
-    unsigned int maxAgents;
+    NeuralEconomy(std::vector<std::string> goods);
 };
 
 
@@ -71,18 +52,18 @@ protected:
 
 struct NeuralPersonDecisionMaker : PersonDecisionMaker {
 
-	NeuralPersonDecisionMaker(std::shared_ptr<DecisionNetHandler> guide);
+	NeuralPersonDecisionMaker(std::weak_ptr<DecisionNetHandler> guide);
 
 	virtual std::vector<Order<Offer>> choose_goods() override;
 	virtual std::vector<Order<JobOffer>> choose_jobs() override;
 	virtual Eigen::ArrayXd choose_goods_to_consume() override;
 
-	std::shared_ptr<DecisionNetHandler> guide;
+	std::weak_ptr<DecisionNetHandler> guide;
 
 protected:
 	NeuralPersonDecisionMaker(
-    	std::shared_ptr<UtilMaxer> parent,
-    	std::shared_ptr<DecisionNetHandler> guide
+    	std::weak_ptr<UtilMaxer> parent,
+    	std::weak_ptr<DecisionNetHandler> guide
 	);
 
 	void confirm_synchronized();
@@ -102,19 +83,19 @@ protected:
 
 struct NeuralFirmDecisionMaker : FirmDecisionMaker {
 
-    NeuralFirmDecisionMaker(std::shared_ptr<DecisionNetHandler> guide);
+    NeuralFirmDecisionMaker(std::weak_ptr<DecisionNetHandler> guide);
 
     virtual Eigen::ArrayXd choose_production_inputs() override;
     virtual std::vector<std::shared_ptr<Offer>> choose_good_offers() override;
     virtual std::vector<Order<Offer>> choose_goods() override;
     virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() override;
 
-	std::shared_ptr<DecisionNetHandler> guide;
+	std::weak_ptr<DecisionNetHandler> guide;
 
 protected:
     NeuralFirmDecisionMaker(
-        std::shared_ptr<ProfitMaxer> parent,
-        std::shared_ptr<DecisionNetHandler> guide
+        std::weak_ptr<ProfitMaxer> parent,
+        std::weak_ptr<DecisionNetHandler> guide
     );
 
     void confirm_synchronized();
@@ -142,33 +123,33 @@ Eigen::ArrayXd torchToEigen(torch::Tensor tensor);
 // cols are {mu, logSigma} for each of n obs (note *log* sigma; sigma = exp(logSigma))
 // returns pair where first value is n sampled values from normal dist
 // and second value is log probas of those values
-std::pair<torch::Tensor, torch::Tensor> sample_normal(torch::Tensor params);
+std::pair<torch::Tensor, torch::Tensor> sample_normal(const torch::Tensor& params);
 
 // same as sample_normal, but applies sigmoid function to output values
-std::pair<torch::Tensor, torch::Tensor> sample_logitNormal(torch::Tensor params);
+std::pair<torch::Tensor, torch::Tensor> sample_logitNormal(const torch::Tensor& params);
 
 // same as sample_normal, but applies exp function to output values
-std::pair<torch::Tensor, torch::Tensor> sample_logNormal(torch::Tensor params);
+std::pair<torch::Tensor, torch::Tensor> sample_logNormal(const torch::Tensor& params);
 
 
 torch::Tensor get_purchase_probas(
-    torch::Tensor offerIndices, // dtype = kInt64
+    const torch::Tensor& offerIndices, // dtype = kInt64
     const Eigen::ArrayXd& utilParams,
     double budget,
     double labor,
     const Eigen::ArrayXd& inventory,
-    std::shared_ptr<PurchaseNet> purchaseNet,
-    torch::Tensor encodedOffers
+    const std::shared_ptr<PurchaseNet>& purchaseNet,
+    const torch::Tensor& encodedOffers
 );
 
 torch::Tensor get_job_probas(
-    torch::Tensor offerIndices, // dtype = kInt64
+    const torch::Tensor& offerIndices, // dtype = kInt64
     const Eigen::ArrayXd& utilParams,
     double money,
     double labor,
     const Eigen::ArrayXd& inventory,
-    std::shared_ptr<PurchaseNet> laborSearchNet,
-    torch::Tensor encodedJobOffers
+    const std::shared_ptr<PurchaseNet>& laborSearchNet,
+    const torch::Tensor& encodedJobOffers
 );
 
 
@@ -200,7 +181,7 @@ struct DecisionNetHandler {
 
     DecisionNetHandler(std::shared_ptr<NeuralEconomy> economy);
 
-    using MapTensor = std::unordered_map<std::shared_ptr<Agent>, torch::Tensor>;
+    using MapTensor = std::unordered_map<Agent*, torch::Tensor>;
     using VecMapTensor = std::vector<MapTensor>;
 
 	std::shared_ptr<NeuralEconomy> economy;
@@ -257,7 +238,7 @@ struct DecisionNetHandler {
 
     void time_step();
 
-    void synchronize_time(std::shared_ptr<Agent> caller);
+    void synchronize_time(const std::shared_ptr<Agent>& caller);
 
     void reset(std::shared_ptr<NeuralEconomy> newEconomy);
 
@@ -272,7 +253,7 @@ struct DecisionNetHandler {
     );
 
 	std::vector<Order<Offer>> get_offers_to_request(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& offerIndices,
 		const Eigen::ArrayXd& utilParams,
 		double budget,
@@ -281,7 +262,7 @@ struct DecisionNetHandler {
 	);
 
     std::vector<Order<Offer>> firm_get_offers_to_request(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& offerIndices,
 		const Eigen::ArrayXd& prodFuncParams,
 		double budget,
@@ -295,7 +276,7 @@ struct DecisionNetHandler {
     );
 
     std::vector<Order<JobOffer>> get_joboffers_to_request(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& jobOfferIndices,
         const Eigen::ArrayXd& utilParams,
         double money,
@@ -304,7 +285,7 @@ struct DecisionNetHandler {
     );
 
     Eigen::ArrayXd get_consumption_proportions(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const Eigen::ArrayXd& utilParams,
         double money,
         double labor,
@@ -312,7 +293,7 @@ struct DecisionNetHandler {
     );
 
     Eigen::ArrayXd get_production_proportions(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
         double labor,
@@ -328,7 +309,7 @@ struct DecisionNetHandler {
     );
 
     std::pair<Eigen::ArrayXd, Eigen::ArrayXd> choose_offers(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& offerIndices,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
@@ -337,7 +318,7 @@ struct DecisionNetHandler {
     );
 
     std::pair<double, double> choose_job_offers(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& offerIndices,
         const Eigen::ArrayXd& prodFuncParams,
         double money,
@@ -346,7 +327,7 @@ struct DecisionNetHandler {
     );
 
     void record_value(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& offerIndices,
         const torch::Tensor& jobOfferIndices,
 		const Eigen::ArrayXd& utilParams,
@@ -356,7 +337,7 @@ struct DecisionNetHandler {
     );
 
     void firm_record_value(
-        std::shared_ptr<Agent> caller,
+        Agent* caller,
         const torch::Tensor& offerIndices,
         const torch::Tensor& jobOfferIndices,
 		const Eigen::ArrayXd& prodFuncParams,
@@ -366,12 +347,12 @@ struct DecisionNetHandler {
     );
 
     void record_reward(
-        std::shared_ptr<Agent> caller,
+        const std::shared_ptr<Agent>& caller,
         double reward
     );
 
     void record_reward(
-        std::shared_ptr<Agent> caller,
+        const std::shared_ptr<Agent>& caller,
         double reward,
         int offset
     );

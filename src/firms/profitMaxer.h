@@ -13,8 +13,13 @@ struct FirmDecisionMaker {
     virtual std::vector<std::shared_ptr<Offer>> choose_good_offers() = 0;
     virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() = 0;
     virtual std::vector<Order<Offer>> choose_goods() = 0;
-    FirmDecisionMaker(std::shared_ptr<ProfitMaxer> parent);
-    std::shared_ptr<ProfitMaxer> parent;
+    // should leave parent unitialized at first
+    // since ProfitMaxer::init will automatically assign decision maker to itself
+    FirmDecisionMaker();
+    std::weak_ptr<ProfitMaxer> parent;
+    
+protected:
+    FirmDecisionMaker(std::weak_ptr<ProfitMaxer> parent);
 };
 
 

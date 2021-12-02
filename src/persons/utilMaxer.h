@@ -9,6 +9,7 @@
 class UtilMaxer;
 
 struct PersonDecisionMaker {
+    PersonDecisionMaker();
     // called by UtilMaxer::buy_goods()
     // looks at current goods on market and chooses bundle that maximizes utility
     // subject to restriction that total price is within budget
@@ -19,9 +20,10 @@ struct PersonDecisionMaker {
     virtual std::vector<Order<JobOffer>> choose_jobs() = 0;
     // Selects which goods in inventory should be consumed
     virtual Eigen::ArrayXd choose_goods_to_consume() = 0;
+    std::weak_ptr<UtilMaxer> parent;
 
-    PersonDecisionMaker(std::shared_ptr<UtilMaxer> parent);
-    std::shared_ptr<UtilMaxer> parent;
+protected:
+    PersonDecisionMaker(std::weak_ptr<UtilMaxer> parent);
 };
 
 

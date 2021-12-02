@@ -1,7 +1,9 @@
 #include <limits>
 #include "utilMaxer.h"
 
-PersonDecisionMaker::PersonDecisionMaker(std::shared_ptr<UtilMaxer> parent) : parent(parent) {}
+PersonDecisionMaker::PersonDecisionMaker() {}
+
+PersonDecisionMaker::PersonDecisionMaker(std::weak_ptr<UtilMaxer> parent) : parent(parent) {}
 
 
 UtilMaxer::UtilMaxer(
@@ -29,7 +31,7 @@ UtilMaxer::UtilMaxer(
 {}
 
 void UtilMaxer::init_decisionMaker() {
-    assert(decisionMaker->parent == nullptr);
+    assert(decisionMaker->parent.lock() == nullptr);
     decisionMaker->parent = std::static_pointer_cast<UtilMaxer>(shared_from_this());
 }
 
