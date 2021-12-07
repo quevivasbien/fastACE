@@ -10,13 +10,18 @@ namespace neural {
 const double SQRT2PI = 2 / (M_2_SQRTPI * M_SQRT1_2);
 
 // for defining default decision net architecture
-const int DEFAULT_stackSize = 10;
-const int DEFAULT_encodingSize = 10;
-const int DEFAULT_hiddenSize = 100;
-const int DEFAULT_nHidden = 6;
-const int DEFAULT_nHiddenSmall = 3;
+const int DEFAULT_STACK_SIZE = 10;
+const int DEFAULT_ENCODING_SIZE = 10;
+const int DEFAULT_HIDDEN_SIZE = 100;
+const int DEFAULT_N_HIDDEN = 6;
+const int DEFAULT_N_HIDDEN_SMALL = 3;
 
 // for defining default training behavior
+const unsigned int DEFAULT_NUM_EPISODES = 100;
+const unsigned int DEFAULT_EPISODE_LENGTH = 20;
+const unsigned int DEFAULT_UPDATE_EVERY_N_EPISODES = 10;
+const unsigned int DEFAULT_CHECKPOINT_EVERY_N_EPISODES = 10;
+
 const float DEFAULT_LEARNING_RATE = 0.001;
 const unsigned int DEFAULT_EPISODE_BATCH_SIZE_FOR_LR_DECAY = 10;
 const unsigned int DEFAULT_PATIENCE_FOR_LR_DECAY = 5;

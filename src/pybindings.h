@@ -13,17 +13,18 @@ extern "C" {
         unsigned int numFirms
     );
 
-    neural::TrainingParams create_training_params(
-        unsigned int numEpisodes,
-        unsigned int episodeLength,
-        unsigned int updateEveryNEpisodes,
-        unsigned int checkpointEveryNEpisodes
+    neural::TrainingParams create_training_params();
+
+    void run(
+        neural::CustomScenarioParams scenarioParams,
+        neural::TrainingParams trainingParams
     );
 
     void train(
         float* output,
         neural::CustomScenarioParams scenarioParams,
-        neural::TrainingParams trainingParams
+        neural::TrainingParams trainingParams,
+        bool fromPretrained
     );
 }
 

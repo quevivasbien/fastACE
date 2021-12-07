@@ -4,6 +4,7 @@
 #include <memory>
 #include <chrono>
 #include <cmath>
+#include <utility>
 #include "scenario.h"
 #include "neuralEconomy.h"
 #include "utilMaxer.h"
@@ -278,16 +279,18 @@ struct TrainingParams {
         checkpointEveryNEpisodes(checkpointEveryNEpisodes)
     {}
 
-    unsigned int numEpisodes;
-    unsigned int episodeLength;
-    unsigned int updateEveryNEpisodes;
-    unsigned int checkpointEveryNEpisodes;
+    TrainingParams() {}
 
-    unsigned int stackSize = DEFAULT_stackSize;
-    unsigned int encodingSize = DEFAULT_encodingSize;
-    unsigned int hiddenSize = DEFAULT_hiddenSize;
-    unsigned int nHidden = DEFAULT_nHidden;
-    unsigned int nHiddenSmall = DEFAULT_nHiddenSmall;
+    unsigned int numEpisodes = DEFAULT_NUM_EPISODES;
+    unsigned int episodeLength = DEFAULT_EPISODE_LENGTH;
+    unsigned int updateEveryNEpisodes = DEFAULT_UPDATE_EVERY_N_EPISODES;
+    unsigned int checkpointEveryNEpisodes = DEFAULT_CHECKPOINT_EVERY_N_EPISODES;
+
+    unsigned int stackSize = DEFAULT_STACK_SIZE;
+    unsigned int encodingSize = DEFAULT_ENCODING_SIZE;
+    unsigned int hiddenSize = DEFAULT_HIDDEN_SIZE;
+    unsigned int nHidden = DEFAULT_N_HIDDEN;
+    unsigned int nHiddenSmall = DEFAULT_N_HIDDEN_SMALL;
 
     float purchaseNetLR = DEFAULT_LEARNING_RATE;
     float firmPurchaseNetLR = DEFAULT_LEARNING_RATE;
@@ -305,7 +308,7 @@ struct TrainingParams {
 
 
 inline std::vector<float> train(
-    std::shared_ptr<NeuralScenario> scenario,
+    const std::shared_ptr<NeuralScenario>& scenario,
     const TrainingParams& params
 ) {
     // note: this implementation will ignore all TrainingParam members except the first four:
@@ -374,7 +377,7 @@ inline std::vector<float> train(
 
 // this is just a convenience function if you don't want to create a TrainingParams object
 inline std::vector<float> train(
-    std::shared_ptr<NeuralScenario> scenario,
+    const std::shared_ptr<NeuralScenario>& scenario,
     unsigned int numEpisodes,
     unsigned int episodeLength,
     unsigned int updateEveryNEpisodes,
@@ -394,9 +397,7 @@ inline std::vector<float> train(
     );
 }
 
-// This is the easiest way to set up training in most cases
-// Just supply a CustomScenarioParams struct and a TrainingParams struct
-inline std::vector<float> train(
+inline std::shared_ptr<CustomScenario> create_scenario(
     const CustomScenarioParams& scenarioParams,
     const TrainingParams& trainingParams
 ) {
@@ -423,10 +424,30 @@ inline std::vector<float> train(
         trainingParams.patienceForLRDecay,
         trainingParams.multiplierForLRDecay
     );
-    auto scenario = std::make_shared<CustomScenario>(trainer, scenarioParams);
 
+    return std::make_shared<CustomScenario>(trainer, scenarioParams);
+}
+
+// This is the easiest way to set up training in most cases
+// Just supply a CustomScenarioParams struct and a TrainingParams struct
+inline std::vector<float> train(
+    const CustomScenarioParams& scenarioParams,
+    const TrainingParams& trainingParams
+) {
+    auto scenario = create_scenario(scenarioParams, trainingParams);
     return train(scenario, trainingParams);
 }
+
+// Same as above but with option to load the neural net params from disk if some training has already been done
+inline std::vector<float> train_from_pretrained(
+    const CustomScenarioParams& scenarioParams,
+    const TrainingParams& trainingParams
+) {
+    auto scenario = create_scenario(scenarioParams, trainingParams);
+    scenario->handler->load_models();
+    return train(scenario, trainingParams);
+}
+
 
 } // namespace neural
 

@@ -43,6 +43,8 @@ public:
 
     virtual std::string get_typename() const;
 
+    bool time_step_no_grad();
+
 protected:
     NeuralEconomy(std::vector<std::string> goods);
 };

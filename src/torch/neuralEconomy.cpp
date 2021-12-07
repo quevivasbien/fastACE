@@ -40,4 +40,9 @@ std::string NeuralEconomy::get_typename() const {
     return "NeuralEconomy";
 }
 
+bool NeuralEconomy::time_step_no_grad() {
+    torch::NoGradGuard no_grad;
+    return time_step();
+}
+
 } // namespace neural

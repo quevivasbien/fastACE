@@ -225,11 +225,11 @@ DecisionNetHandler::DecisionNetHandler(
     std::shared_ptr<NeuralEconomy> economy
 ) : DecisionNetHandler(
     economy,
-    DEFAULT_stackSize,
-    DEFAULT_encodingSize,
-    DEFAULT_hiddenSize,
-    DEFAULT_nHidden,
-    DEFAULT_nHiddenSmall
+    DEFAULT_STACK_SIZE,
+    DEFAULT_ENCODING_SIZE,
+    DEFAULT_HIDDEN_SIZE,
+    DEFAULT_N_HIDDEN,
+    DEFAULT_N_HIDDEN_SMALL
 ) {}
 
 

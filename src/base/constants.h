@@ -4,6 +4,8 @@
 #include <thread>
 
 namespace constants {
+    // Note: if you compile with low verbosity, the compiler may remove any branches that check for higher verbosity,
+    // So if you want to be able to change verbosity after compilation, you need to set here the highest verbosity you plan on using
     const unsigned int verbose = 1;
     const double eps = 1e-8;
     const double largeNumber = 1e8;

@@ -1,6 +1,6 @@
 import ctypes
-import sys
 import os
+import json
 import matplotlib.pyplot as plt
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -101,26 +101,31 @@ lib.create_scenario_params.argtypes = [
 ]
 lib.create_scenario_params.restype = CustomScenarioParams
 
-lib.create_training_params.argtypes = [
-    ctypes.c_uint,
-    ctypes.c_uint,
-    ctypes.c_uint,
-    ctypes.c_uint
-]
 lib.create_training_params.restype = TrainingParams
+
+lib.run.argtypes = [
+    CustomScenarioParams,
+    TrainingParams
+]
+lib.run.restype = None
 
 lib.train.argtypes = [
     ctypes.POINTER(ctypes.c_float),
     CustomScenarioParams,
-    TrainingParams
+    TrainingParams,
+    ctypes.c_bool
 ]
 lib.train.restype = None
 
 
-def train(scenarioParams, trainingParams):
+def train(
+    scenarioParams: CustomScenarioParams,
+    trainingParams: TrainingParams,
+    fromPretrained=False
+) -> list:
     losses = ctypes.ARRAY(ctypes.c_float, trainingParams.numEpisodes)()
     lib.train(
-        losses, scenarioParams, trainingParams
+        losses, scenarioParams, trainingParams, fromPretrained
     )
     return list(losses)
 
@@ -134,55 +139,138 @@ class RuntimeManager:
 
     def __init__(
         self,
-        numPersons,
-        numFirms,
-        numEpisodes,
-        episodeLength,
-        updateEveryNEpisodes=10,
-        checkpointEveryNEpisodes=10
+        numPersons: int,
+        numFirms: int,
+        # saveDir: str
     ):
         self.config = lib.get_config()
         self.scenarioParams = lib.create_scenario_params(
             numPersons,
             numFirms
         )
-        self.trainingParams = lib.create_training_params(
-            numEpisodes,
-            episodeLength,
-            updateEveryNEpisodes,
-            checkpointEveryNEpisodes
-        )
+        self.trainingParams = lib.create_training_params()
+        # self.saveDir = saveDir
     
-    def edit_config(self, attr, new_value):
+    def edit_config(self, attr: str, new_value):
         setattr(self.config.contents, attr, new_value)
     
     def view_config(self):
         return dict_from_cstruct(self.config.contents)
     
-    def edit_scenario_params(self, attr, new_value):
+    def edit_scenario_params(self, attr: str, new_value):
         setattr(self.scenarioParams, attr, new_value)
     
     def view_scenario_params(self):
         return dict_from_cstruct(self.scenarioParams)
 
-    def edit_training_params(self, attr, new_value):
+    def edit_training_params(self, attr: str, new_value):
         setattr(self.trainingParams, attr, new_value)
     
     def view_training_params(self):
         return dict_from_cstruct(self.trainingParams)
     
-    def train(self, plot=True):
-        losses = ctypes.ARRAY(
-            ctypes.c_float, self.trainingParams.numEpisodes
-        )()
-        lib.train(
-            losses, self.scenarioParams, self.trainingParams
+    def set_all_lrs(self, new_lr: float):
+        for attr in self.view_training_params().keys():
+            if attr.endswith('LR'):
+                self.edit_training_params(attr, new_lr)
+    
+    def save_settings(self):
+        settings = {
+            'config': self.view_config(),
+            'scenarioParams': self.view_scenario_params(),
+            'trainingParams': self.view_training_params()
+        }
+        with open('settings.json', 'w') as fh:
+            json.dump(settings, fh)
+    
+    def load_settings(self, set=True):
+        with open('settings.json', 'r') as fh:
+            settings = json.load(fh)
+        if set:
+            for key, value in settings['config'].items():
+                self.edit_config(key, value)
+            for key, value in settings['scenarioParams'].items():
+                self.edit_scenario_params(key, value)
+            for key, value in settings['trainingParams'].items():
+                self.edit_training_params(key, value)
+            self.save_settings()
+        return settings
+
+    def settings_synched(self) -> bool:
+        settings = self.load_settings(False)
+        synched = (
+            settings['scenarioParams'] == self.view_scenario_params()
+            and settings['trainingParams'] == self.view_training_params()
         )
-        losses = list(losses)
+        if not synched:
+            print(
+                "You're trying to load a model that doesn't match the settings you're currently using.\n"
+                "What do you want to do?\n"
+                "Abort [1/default]\n"
+                "run .load_settings() first [2]\n"
+                "continue without loading (may cause errors) [3]\n"
+            )
+            action = input('Type a number:\n> ')
+            if action == '2':
+                self.load_settings()
+                return True
+            elif action == '3':
+                return True
+            else:
+                return False
+        return True
+    
+    def set_episode_params(
+        self,
+        numEpisodes=None,
+        episodeLength=None,
+        updateEveryNEpisodes=None,
+        checkpointEveryNEpisodes=None
+    ):
+        if numEpisodes is not None:
+            self.edit_training_params('numEpisodes', numEpisodes)
+        if episodeLength is not None:
+            self.edit_training_params('episodeLength', episodeLength)
+        if updateEveryNEpisodes is not None:
+            self.edit_training_params('updateEveryNEpisodes', updateEveryNEpisodes)
+        if checkpointEveryNEpisodes is not None:
+            self.edit_training_params('checkpointEveryNEpisodes', checkpointEveryNEpisodes)
+    
+    def train(
+        self,
+        numEpisodes=None,
+        episodeLength=None,
+        updateEveryNEpisodes=None,
+        checkpointEveryNEpisodes=None,
+        plot=True,
+        fromPretrained=False
+    ) -> list:
+        self.set_episode_params(
+            numEpisodes, episodeLength, updateEveryNEpisodes, checkpointEveryNEpisodes
+        )
+
+        if fromPretrained and not self.settings_synched():
+            return []
+
+        losses = train(self.scenarioParams, self.trainingParams, fromPretrained)
         if plot:
             plt.plot(losses, marker='.', linestyle='', alpha=0.3)
             plt.xlabel('episode')
             plt.ylabel('loss')
             plt.show()
+        
+
+        # model_files = [f for f in os.listdir(os.getcwd()) if f.endswith('.pt')]
+        # if not os.path.isdir(self.saveDir):
+        #     os.makedirs(self.saveDir)
+        # for f in model_files:
+        #     os.rename(f, os.path.join(self.saveDir, f))
+
         return losses
+    
+    def run(self, episodeLength=None):
+        if not self.settings_synched():
+            return
+        self.set_episode_params(episodeLength=episodeLength)
+        lib.run(self.scenarioParams, self.trainingParams)
     
