@@ -349,12 +349,12 @@ struct DecisionNetHandler {
     );
 
     void record_reward(
-        const std::shared_ptr<Agent>& caller,
+        Agent* caller,
         double reward
     );
 
     void record_reward(
-        const std::shared_ptr<Agent>& caller,
+        Agent* caller,
         double reward,
         int offset
     );

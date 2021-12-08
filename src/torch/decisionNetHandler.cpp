@@ -629,9 +629,9 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     auto wage_pair = sample_logNormal(wage_params);
     double wage = wage_pair.first.item<double>();
     // clip wage to avoid inf values
-    if (wage > constants::config.largeNumber) {
-        wage = constants::config.largeNumber;
-        pprint(2, "Note: Clipped wage to " + std::to_string(constants::config.largeNumber));
+    if (wage > constants::largeNumber) {
+        wage = constants::largeNumber;
+        pprint(2, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
     }
 
     {
@@ -702,23 +702,23 @@ void DecisionNetHandler::firm_record_value(
 
 
 void DecisionNetHandler::record_reward(
-    const std::shared_ptr<Agent>& caller,
+    Agent* caller,
     double reward
 ) {
     {
         std::lock_guard<std::mutex> lock(myMutex);
-        rewards[time-1][caller.get()] = torch::tensor(reward);
+        rewards[time-1][caller] = torch::tensor(reward);
     }
 }
 
 void DecisionNetHandler::record_reward(
-    const std::shared_ptr<Agent>& caller,
+    Agent* caller,
     double reward,
     int offset
 ) {
     {
         std::lock_guard<std::mutex> lock(myMutex);
-        rewards[time - 1 - offset][caller.get()] = torch::tensor(reward);
+        rewards[time - 1 - offset][caller] = torch::tensor(reward);
     }
 }
 

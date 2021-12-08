@@ -8,15 +8,6 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 lib = ctypes.CDLL("../bin/libpybindings.so")
 
-class Config(ctypes.Structure):
-    _fields_ = [
-        ('verbose', ctypes.c_uint),
-        ('eps', ctypes.c_double),
-        ('largeNumber', ctypes.c_double),
-        ('multithreaded', ctypes.c_bool),
-        ('numThreads', ctypes.c_uint)
-    ]
-
 class CustomScenarioParams(ctypes.Structure):
     _fields_ = [
         ('numPeople', ctypes.c_uint),
@@ -92,9 +83,6 @@ class TrainingParams(ctypes.Structure):
     ]
 
 
-lib.get_config.restype = ctypes.POINTER(Config)
-
-
 lib.create_scenario_params.argtypes = [
     ctypes.c_uint,
     ctypes.c_uint
@@ -143,19 +131,11 @@ class RuntimeManager:
         numFirms: int,
         # saveDir: str
     ):
-        self.config = lib.get_config()
         self.scenarioParams = lib.create_scenario_params(
             numPersons,
             numFirms
         )
         self.trainingParams = lib.create_training_params()
-        # self.saveDir = saveDir
-    
-    def edit_config(self, attr: str, new_value):
-        setattr(self.config.contents, attr, new_value)
-    
-    def view_config(self):
-        return dict_from_cstruct(self.config.contents)
     
     def edit_scenario_params(self, attr: str, new_value):
         setattr(self.scenarioParams, attr, new_value)
@@ -176,7 +156,6 @@ class RuntimeManager:
     
     def save_settings(self):
         settings = {
-            'config': self.view_config(),
             'scenarioParams': self.view_scenario_params(),
             'trainingParams': self.view_training_params()
         }
@@ -187,13 +166,10 @@ class RuntimeManager:
         with open('settings.json', 'r') as fh:
             settings = json.load(fh)
         if set:
-            for key, value in settings['config'].items():
-                self.edit_config(key, value)
             for key, value in settings['scenarioParams'].items():
                 self.edit_scenario_params(key, value)
             for key, value in settings['trainingParams'].items():
                 self.edit_training_params(key, value)
-            self.save_settings()
         return settings
 
     def settings_synched(self) -> bool:
@@ -204,7 +180,7 @@ class RuntimeManager:
         )
         if not synched:
             print(
-                "You're trying to load a model that doesn't match the settings you're currently using.\n"
+                "You're trying to load a model that doesn't match the settings you're currently using.\n\n"
                 "What do you want to do?\n"
                 "Abort [1/default]\n"
                 "run .load_settings() first [2]\n"
@@ -245,12 +221,13 @@ class RuntimeManager:
         plot=True,
         fromPretrained=False
     ) -> list:
-        self.set_episode_params(
-            numEpisodes, episodeLength, updateEveryNEpisodes, checkpointEveryNEpisodes
-        )
 
         if fromPretrained and not self.settings_synched():
             return []
+
+        self.set_episode_params(
+            numEpisodes, episodeLength, updateEveryNEpisodes, checkpointEveryNEpisodes
+        )
 
         losses = train(self.scenarioParams, self.trainingParams, fromPretrained)
         if plot:
@@ -259,13 +236,6 @@ class RuntimeManager:
             plt.ylabel('loss')
             plt.show()
         
-
-        # model_files = [f for f in os.listdir(os.getcwd()) if f.endswith('.pt')]
-        # if not os.path.isdir(self.saveDir):
-        #     os.makedirs(self.saveDir)
-        # for f in model_files:
-        #     os.rename(f, os.path.join(self.saveDir, f))
-
         return losses
     
     def run(self, episodeLength=None):

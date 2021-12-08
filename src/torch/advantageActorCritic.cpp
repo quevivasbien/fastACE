@@ -322,8 +322,6 @@ float AdvantageActorCritic::get_loss_for_person_in_episode(
         consumptionNetLoss += consumptionLoss.item<float>();
     }
 
-    // normalize by episode length and num persons in economy
-    loss = loss / static_cast<long>(handler->time * numTotalPersons);
     loss.backward({}, true);
     return loss.item<float>();
 }
@@ -419,7 +417,6 @@ float AdvantageActorCritic::get_loss_for_firm_in_episode(
         jobOfferNetLoss += jobOfferLoss.item<float>();
     }
 
-    loss = loss / static_cast<long>((handler->time - 1) * numTotalFirms);
     loss.backward({}, true);
     return loss.item<float>();
 
@@ -462,8 +459,8 @@ float AdvantageActorCritic::get_loss_for_persons_multithreaded() {
     auto persons = handler->economy->get_persons();
     std::vector<unsigned int> indices = get_indices_for_multithreading(persons.size());
     std::vector<std::thread> threads;
-    threads.reserve(constants::config.numThreads);
-    for (unsigned int i = 0; i < constants::config.numThreads; i++) {
+    threads.reserve(constants::numThreads);
+    for (unsigned int i = 0; i < constants::numThreads; i++) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
@@ -488,8 +485,8 @@ float AdvantageActorCritic::get_loss_for_firms_multithreaded() {
     auto firms = handler->economy->get_firms();
     std::vector<unsigned int> indices = get_indices_for_multithreading(firms.size());
     std::vector<std::thread> threads;
-    threads.reserve(constants::config.numThreads);
-    for (unsigned int i = 0; i < constants::config.numThreads; i++) {
+    threads.reserve(constants::numThreads);
+    for (unsigned int i = 0; i < constants::numThreads; i++) {
         if (indices[i] != indices[i+1]) {
             threads.push_back(
                 std::thread(
@@ -562,7 +559,7 @@ float AdvantageActorCritic::train_on_episode() {
     zero_all_grads();
     update_lr_schedulers();
     float loss_ = 0.0;
-    if (constants::config.multithreaded) {
+    if (constants::multithreaded) {
         loss_ += get_loss_for_persons_multithreaded();
         loss_ += get_loss_for_firms_multithreaded();
     }

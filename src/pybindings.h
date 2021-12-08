@@ -6,8 +6,6 @@
 
 
 extern "C" {
-    auto* get_config();
-
     neural::CustomScenarioParams create_scenario_params(
         unsigned int numPeople,
         unsigned int numFirms

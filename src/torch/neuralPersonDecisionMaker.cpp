@@ -105,7 +105,7 @@ Eigen::ArrayXd NeuralPersonDecisionMaker::choose_goods_to_consume() {
     );
 
     double util = parent_->u(to_consume);
-    guide_->record_reward(parent_, util);
+    guide_->record_reward(parent_.get(), util);
 
     return to_consume;
 }

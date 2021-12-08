@@ -68,7 +68,7 @@ void NeuralFirmDecisionMaker::record_profit() {
     assert(guide_ != nullptr && parent_ != nullptr);
     if (time > 0) {
         double profit = parent_->get_money() - last_money;
-        guide_->record_reward(parent_, profit, 1);
+        guide_->record_reward(parent_.get(), profit, 1);
     }
     last_money = parent_->get_money();
 }
