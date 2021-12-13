@@ -5,23 +5,23 @@ Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.
 }
 
 std::shared_ptr<Person> Economy::add_person() {
-    return util::create<Person>(shared_from_this());
+    return util::create<Person>(this);
 }
 
 void Economy::add_agent(std::shared_ptr<Person> person) {
     std::lock_guard<std::mutex> lock(mutex);
-    assert(person->get_economy() == shared_from_this());
+    assert(person->get_economy() == this);
     persons.push_back(person);
     persons_weak.push_back(std::weak_ptr<Person>(person));
 }
 
-std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
-    return util::create<Firm>(shared_from_this(), firstOwner);
+std::shared_ptr<Firm> Economy::add_firm() {
+    return util::create<Firm>(this);
 }
 
 void Economy::add_agent(std::shared_ptr<Firm> firm) {
     std::lock_guard<std::mutex> lock(mutex);
-    assert(firm->get_economy() == shared_from_this());
+    assert(firm->get_economy() == this);
     firms.push_back(firm);
     firms_weak.push_back(std::weak_ptr<Firm>(firm));
 }

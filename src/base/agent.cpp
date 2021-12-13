@@ -1,12 +1,12 @@
 #include "base.h"
 
 
-Agent::Agent(std::shared_ptr<Economy> economy) : economy(economy), money(0), time(economy->get_time()) {
+Agent::Agent(Economy* economy) : economy(economy), money(0), time(economy->get_time()) {
     inventory = Eigen::ArrayXd::Zero(economy->get_numGoods());
 }
 
 Agent::Agent(
-    std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money
+    Economy* economy, Eigen::ArrayXd inventory, double money
 ) : economy(economy), inventory(inventory), money(money), time(economy->get_time()) {
     assert(inventory.size() == economy->get_numGoods());
 }
@@ -28,7 +28,7 @@ bool Agent::time_step() {
 }
 
 unsigned int Agent::get_time() const { return time; };
-std::shared_ptr<Economy> Agent::get_economy() const { return economy; }
+Economy* Agent::get_economy() const { return economy; }
 double Agent::get_money() const { return money; }
 const Eigen::ArrayXd& Agent::get_inventory() const { return inventory; }
 
@@ -158,11 +158,6 @@ void Agent::accept_offer_response(std::shared_ptr<Offer> offer) {
     offer->amountLeft--;
     // mark that one of these has actually been sold
     offer->amountTaken++;
-}
-
-
-void Agent::create_firm() {
-    economy->add_firm(shared_from_this());
 }
 
 

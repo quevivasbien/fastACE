@@ -50,13 +50,13 @@ public:
 
 protected:
     UtilMaxer(
-        std::shared_ptr<Economy> economy,
+        Economy* economy,
         std::shared_ptr<VecToScalar> utilFunc,
         double discountRate,
         std::shared_ptr<PersonDecisionMaker> decisionMaker
     );
     UtilMaxer(
-        std::shared_ptr<Economy> economy,
+        Economy* economy,
         Eigen::ArrayXd inventory,
         double money,
         std::shared_ptr<VecToScalar> utilFunc,

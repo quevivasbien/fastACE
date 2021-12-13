@@ -1,9 +1,9 @@
 #include "base.h"
 
-Person::Person(std::shared_ptr<Economy> economy) : Agent(economy) {}
+Person::Person(Economy* economy) : Agent(economy) {}
 
 Person::Person(
-    std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money
+    Economy* economy, Eigen::ArrayXd inventory, double money
 ) : Agent(economy, inventory, money) {}
 
 std::string Person::get_typename() const {

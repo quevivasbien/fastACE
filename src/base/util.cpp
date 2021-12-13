@@ -41,7 +41,7 @@ void pprint_time_elasped(
 }
 
 std::string format_sci_notation(double x) {
-    double pow_ = floor(log10(x));
+    double pow_ = floor(log10(std::abs(x)));
     double head = x / pow(10.0, pow_);
     return std::to_string(head) + 'e' + std::to_string(static_cast<int>(pow_));
 }

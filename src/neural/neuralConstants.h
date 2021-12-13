@@ -26,7 +26,7 @@ const double DEFAULT_LEARNING_RATE = 1e-5;
 const unsigned int DEFAULT_EPISODE_BATCH_SIZE_FOR_LR_DECAY = 10;
 const unsigned int DEFAULT_PATIENCE_FOR_LR_DECAY = 5;
 const double DEFAULT_MULTIPLIER_FOR_LR_DECAY = 0.5;
-const unsigned int DEFAULT_REVERSE_ANNEALING_PERIOD = 2;
+const unsigned int DEFAULT_REVERSE_ANNEALING_PERIOD = 4;
 
 // where trained models save by default
 const char DEFAULT_SAVE_DIR[] = "../models/";

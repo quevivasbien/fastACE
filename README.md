@@ -36,15 +36,18 @@ If Eigen is not in a place where CMake can find it automatically, you may need t
 ## Compiling the project
 
 Once you've configured things, just run
-```cmake --build . --config Release```
+```cmake --build .```
 to compile the source code. Alternatively, just execute the `build.sh` script in the `build` directory.
 
 This will generate a `main` executable in the `bin` directory. To change what the `main` executable does, you can edit `main.cpp` in the `src` directory.
 
+## Project structure
+
+See the [code explainer](./docs/explains_code.md) document for an overview of how the code in this project is arranged.
+
 ## How to use
 
-Forthcoming...
-
+See the [usage guide](./docs/usage.md) for an overview of how to use this project.
 
 ## Ifopt (optional)
 

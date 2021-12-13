@@ -4,6 +4,7 @@ main.py provides interface with the C++ library, which includes some basic train
 This module expands on that training functionality.
 """
 
+import typing
 import os
 from main import RuntimeManager
 
@@ -27,24 +28,26 @@ class Trainer:
         self.numFirms = numFirms
         self.episodeLength = episodeLength
     
-    def make_attempt(self, fastLR: float, attemptLength: int) -> RuntimeManager:
+    def make_attempt(self, fastLR: float, attemptLength: int) -> typing.Tuple[RuntimeManager, float]:
         mgr = RuntimeManager(self.numPersons, self.numFirms)
         mgr.set_all_lrs(fastLR)
         mgr.train(attemptLength, self.episodeLength, plot=False)
-        return mgr
+        loss_score = sum(mgr.loss_history[-max(attemptLength // 2, 1):])
+        return mgr, loss_score
 
     def explore(self, fastLR: float, numAttempts: int, attemptLength: int) -> RuntimeManager:
         mgrs = []
+        loss_scores = []
         # start training a bunch of models
         for i in range(numAttempts):
             print(f'Making exploratory attempt ({i+1} of {numAttempts})')
-            mgrs.append(self.make_attempt(fastLR, attemptLength))
+            mgr, loss_score = self.make_attempt(fastLR, attemptLength)
+            print(f'Attempt {i}: loss score = {loss_score:.3e}')
+            mgrs.append(mgr)
+            loss_scores.append(loss_score)
             move_model_files(SAVE_DIR, os.path.join(SAVE_DIR, f'attempt{i}'))
         # choose the best model
-        best_attempt = min(
-            range(numAttempts),
-            key=lambda i: sum(mgrs[i].loss_history[-max(attemptLength // 2, 1):])
-        )
+        best_attempt = min(range(numAttempts), key=lambda i: loss_scores[i])
         move_model_files(os.path.join(SAVE_DIR, f'attempt{best_attempt}'), SAVE_DIR)
         return mgrs[best_attempt]
 

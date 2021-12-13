@@ -7,11 +7,10 @@ FirmDecisionMaker::FirmDecisionMaker(std::weak_ptr<ProfitMaxer> parent) : parent
 
 
 ProfitMaxer::ProfitMaxer(
-    std::shared_ptr<Economy> economy,
-    std::shared_ptr<Agent> owner,
+    Economy* economy,
     std::shared_ptr<VecToVec> prodFunc,
     std::shared_ptr<FirmDecisionMaker> decisionMaker
-) : Firm(economy, owner),
+) : Firm(economy),
     prodFunc(prodFunc),
     decisionMaker(decisionMaker)
 {
@@ -19,7 +18,7 @@ ProfitMaxer::ProfitMaxer(
 }
 
 ProfitMaxer::ProfitMaxer(
-    std::shared_ptr<Economy> economy,
+    Economy* economy,
     std::vector<std::shared_ptr<Agent>> owners,
     Eigen::ArrayXd inventory,
     double money,

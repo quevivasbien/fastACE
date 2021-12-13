@@ -7,7 +7,7 @@ PersonDecisionMaker::PersonDecisionMaker(std::weak_ptr<UtilMaxer> parent) : pare
 
 
 UtilMaxer::UtilMaxer(
-    std::shared_ptr<Economy> economy,
+    Economy* economy,
     std::shared_ptr<VecToScalar> utilFunc,
     double discountRate,
     std::shared_ptr<PersonDecisionMaker> decisionMaker
@@ -18,7 +18,7 @@ UtilMaxer::UtilMaxer(
 {}
 
 UtilMaxer::UtilMaxer(
-    std::shared_ptr<Economy> economy,
+    Economy* economy,
     Eigen::ArrayXd inventory,
     double money,
     std::shared_ptr<VecToScalar> utilFunc,

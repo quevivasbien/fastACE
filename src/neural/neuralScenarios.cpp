@@ -38,7 +38,7 @@ std::shared_ptr<Economy> SimpleScenario::setup() {
     std::shared_ptr<NeuralEconomy> economy = get_economy({"bread", "capital"});
 
     UtilMaxer::init(
-        economy,
+        economy.get(),
         Eigen::Array2d(10.0, 10.0),
         20.0,
         std::make_shared<CES>(1.0, Eigen::Array3d(0.5, 0.5, 0.5), 1.3),
@@ -46,7 +46,7 @@ std::shared_ptr<Economy> SimpleScenario::setup() {
         std::make_shared<NeuralPersonDecisionMaker>(economy->handler)
     );
     UtilMaxer::init(
-        economy,
+        economy.get(),
         Eigen::Array2d(10.0, 10.0),
         20.0,
         std::make_shared<CES>(1.0, Eigen::Array3d(0.2, 0.6, 0.4), 1.3),
@@ -55,8 +55,8 @@ std::shared_ptr<Economy> SimpleScenario::setup() {
     );
 
     ProfitMaxer::init(
-        economy,
-        std::vector<std::shared_ptr<Agent>>({nullptr}),
+        economy.get(),
+        std::vector<std::shared_ptr<Agent>>(),
         Eigen::Array2d(10.0, 20.0),
         50.0,
         create_CES_VecToVec(
@@ -99,9 +99,8 @@ std::shared_ptr<Economy> CustomScenario::setup() {
     std::normal_distribution<double> randn(0, 1);
 
     for (unsigned int i = 0; i < params.numPeople; i++) {
-        ;
         UtilMaxer::init(
-            economy,
+            economy.get(),
             Eigen::Array2d(
                 util::make_nonnegative(params.good1_mu + params.good1_sigma * randn(rng)),
                 util::make_nonnegative(params.good2_mu + params.good2_sigma * randn(rng))
@@ -125,8 +124,8 @@ std::shared_ptr<Economy> CustomScenario::setup() {
 
     for (unsigned int i = 0; i < params.numFirms; i++) {
         ProfitMaxer::init(
-            economy,
-            std::vector<std::shared_ptr<Agent>>({nullptr}),
+            economy.get(),
+            std::vector<std::shared_ptr<Agent>>(),
             Eigen::Array2d(
                 util::make_nonnegative(params.firm_good1_mu + params.firm_good2_sigma * randn(rng)),
                 util::make_nonnegative(params.firm_good2_mu + params.firm_good2_sigma * randn(rng))

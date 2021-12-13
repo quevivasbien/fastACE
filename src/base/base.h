@@ -77,7 +77,7 @@ struct Order {
 // esp if search costs are implemented
 
 
-class Economy : public std::enable_shared_from_this<Economy> {
+class Economy {
     // the Economy manages all the agents and holds the markets for goods and labor
 public:
     Economy(std::vector<std::string> goods);
@@ -88,7 +88,7 @@ public:
     unsigned int get_time() const;
 
     std::shared_ptr<Person> add_person();
-    std::shared_ptr<Firm> add_firm(std::shared_ptr<Agent> firstOwner);
+    std::shared_ptr<Firm> add_firm();
     void add_agent(std::shared_ptr<Person> person);
     void add_agent(std::shared_ptr<Firm> firm);
 
@@ -142,7 +142,7 @@ public:
     virtual bool time_step();
 
     unsigned int get_time() const;
-    std::shared_ptr<Economy> get_economy() const;
+    Economy* get_economy() const;
     double get_money() const;
     const Eigen::ArrayXd& get_inventory() const;
 
@@ -158,10 +158,10 @@ public:
     virtual void print_summary() const;
 
 protected:
-    Agent(std::shared_ptr<Economy> economy);
-    Agent(std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money);
+    Agent(Economy* economy);
+    Agent(Economy* economy, Eigen::ArrayXd inventory, double money);
 
-    std::shared_ptr<Economy> economy;  // the economy this Agent is a part of
+    Economy* economy;  // the economy this Agent is a part of
     Eigen::ArrayXd inventory;
     // the offers this agent has listed on the market
     std::vector<std::shared_ptr<Offer>> myOffers;
@@ -185,8 +185,6 @@ protected:
     virtual void check_my_offers();
     // called by the offerer during review_offer_response, finalizes a transaction
     void accept_offer_response(std::shared_ptr<Offer> offer);
-    // creates a new firm with this agent as the first owner
-    virtual void create_firm();
 };
 
 
@@ -207,8 +205,8 @@ public:
     virtual std::string get_typename() const override;
 
 protected:
-    Person(std::shared_ptr<Economy> economy);
-    Person(std::shared_ptr<Economy> economy, Eigen::ArrayXd inventory, double money);
+    Person(Economy* economy);
+    Person(Economy* economy, Eigen::ArrayXd inventory, double money);
 
 	double laborSupplied = 0.0;
 
@@ -247,8 +245,8 @@ public:
     virtual std::string get_typename() const override;
 
 protected:
-    Firm(std::shared_ptr<Economy> economy, std::shared_ptr<Agent> owner);
-    Firm(std::shared_ptr<Economy> economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money);
+    Firm(Economy* economy);
+    Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money);
 
     std::vector<std::shared_ptr<Agent>> owners;
     // the job offers this firm has listed on the job market

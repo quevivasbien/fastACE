@@ -3,12 +3,10 @@
 #include <typeinfo>
 #include "base.h"
 
-Firm::Firm(std::shared_ptr<Economy> economy, std::shared_ptr<Agent> owner)
-    : Agent(economy) {
-        owners.push_back(owner);
-    }
+Firm::Firm(Economy* economy)
+    : Agent(economy) {}
 
-Firm::Firm(std::shared_ptr<Economy> economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money)
+Firm::Firm(Economy* economy, std::vector<std::shared_ptr<Agent>> owners, Eigen::ArrayXd inventory, double money)
     : Agent(economy, inventory, money), owners(owners) {}
 
 
