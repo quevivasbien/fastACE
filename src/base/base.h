@@ -194,11 +194,11 @@ class Person : public Agent {
     // Persons are Agents which can also consume their goods and offer labor to Firms
 public:
     template <typename T, typename ... Args>
-	friend std::shared_ptr<T> create(Args&& ... args);
+	friend std::shared_ptr<T> util::create(Args&& ... args);
 
     template <typename ... Args>
     static std::shared_ptr<Person> init(Args&& ... args) {
-        return create<Person>(std::forward<Args>(args) ...);
+        return util::create<Person>(std::forward<Args>(args) ...);
     }
 
 	double get_laborSupplied() const;
@@ -224,11 +224,11 @@ class Firm : public Agent {
     // Firms are owned by other Agents (other firms or persons)
 public:
     template <typename T, typename ... Args>
-	friend std::shared_ptr<T> create(Args&& ... args);
+	friend std::shared_ptr<T> util::create(Args&& ... args);
 
     template <typename ... Args>
     static std::shared_ptr<Firm> init(Args&& ... args) {
-        return create<Firm>(std::forward<Args>(args) ...);
+        return util::create<Firm>(std::forward<Args>(args) ...);
     }
 
     virtual void search_for_laborers() {}  // currently does nothing

@@ -19,7 +19,7 @@ extern "C" {
     );
 
     void train(
-        float* output,
+        double* output,
         neural::CustomScenarioParams scenarioParams,
         neural::TrainingParams trainingParams,
         bool fromPretrained

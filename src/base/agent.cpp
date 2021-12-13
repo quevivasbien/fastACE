@@ -18,7 +18,7 @@ bool Agent::time_step() {
         check_my_offers();
         {
             std::lock_guard<std::mutex> lock(myMutex);
-            flush(myOffers);
+            util::flush(myOffers);
         }
         return true;  // completed successfully
     }
@@ -100,7 +100,7 @@ bool Agent::respond_to_offer(std::weak_ptr<const Offer> offer_) {
     // check that the agent actually has enough money, then send to offerer
     auto offer = offer_.lock();
     if (offer != nullptr && money >= offer->price) {
-        print_status(this, "Asking for offer acceptance...");
+        util::print_status(this, "Asking for offer acceptance...");
         bool accepted = offer->offerer.lock()->review_offer_response(shared_from_this(), offer);
         if (accepted) {
             std::lock_guard<std::mutex> lock(myMutex);
@@ -120,9 +120,9 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::weak_pt
     std::shared_ptr<Offer> myCopy;
     {
         std::lock_guard<std::mutex> lock(myMutex);
-        print_status(this, "Reviewing offer response...");
+        util::print_status(this, "Reviewing offer response...");
         if (!offer_->is_available()) {
-            print_status(this, "Requested offer is not available.");
+            util::print_status(this, "Requested offer is not available.");
             return false;
         }
         // check that the offer is in myOffers
@@ -138,7 +138,7 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::weak_pt
         // need to use myCopy from here since it's not const
         // make sure this agent can actually afford the transaction
         if ((inventory < myCopy->quantities).any()) {
-            print_status(this, "I can't afford to fulfill this offer.");
+            util::print_status(this, "I can't afford to fulfill this offer.");
             // mark for removal and return false
             myCopy->amountLeft = 0;
             return false;
@@ -151,7 +151,7 @@ bool Agent::review_offer_response(std::shared_ptr<Agent> responder, std::weak_pt
 
 void Agent::accept_offer_response(std::shared_ptr<Offer> offer) {
     std::lock_guard<std::mutex> lock(myMutex);
-    print_status(this, "Accepting offer response...");
+    util::print_status(this, "Accepting offer response...");
     money += offer->price;
     inventory -= offer->quantities;
     // change listing to -= 1 amount available

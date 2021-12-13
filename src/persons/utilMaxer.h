@@ -30,11 +30,11 @@ protected:
 class UtilMaxer : public Person {
 public:
     template <typename T, typename ... Args>
-	friend std::shared_ptr<T> create(Args&& ... args);
+	friend std::shared_ptr<T> util::create(Args&& ... args);
 
     template <typename ... Args>
     static std::shared_ptr<UtilMaxer> init(Args&& ... args) {
-        auto utilMaxer = create<UtilMaxer>(std::forward<Args>(args) ...);
+        auto utilMaxer = util::create<UtilMaxer>(std::forward<Args>(args) ...);
         utilMaxer->init_decisionMaker();
         return utilMaxer;
     }

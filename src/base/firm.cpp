@@ -27,21 +27,21 @@ bool Firm::time_step() {
         return false;
     }
     else {
-        print_status(this, "Checking my job offers...");
+        util::print_status(this, "Checking my job offers...");
         check_myJobOffers();
         {
             std::lock_guard<std::mutex> lock(myMutex);
-            flush(myJobOffers);
+            util::flush(myJobOffers);
         }
-        print_status(this, "Buying goods...");
+        util::print_status(this, "Buying goods...");
         buy_goods();
-        print_status(this, "Producing...");
+        util::print_status(this, "Producing...");
         produce();
-        print_status(this, "Selling goods...");
+        util::print_status(this, "Selling goods...");
         sell_goods();
         pay_dividends();
         laborHired = 0.0;
-        print_status(this, "Searching for laborers...");
+        util::print_status(this, "Searching for laborers...");
         search_for_laborers();
         return true;
     }
@@ -64,7 +64,7 @@ bool Firm::review_jobOffer_response(
     {
         std::lock_guard<std::mutex> lock(myMutex);
         if (!jobOffer_->is_available()) {
-            print_status(this, "Requested offer is not available.");
+            util::print_status(this, "Requested offer is not available.");
             return false;
         }
         // check that the offer is in myOffers
@@ -80,7 +80,7 @@ bool Firm::review_jobOffer_response(
         // need to use myCopy from here since it's not const
         // make sure this firm can actually afford to pay the wage
         if (money < myCopy->wage) {
-            print_status(this, "I can't afford to fulfill this offer.");
+            util::print_status(this, "I can't afford to fulfill this offer.");
             // mark for removal
             myCopy->amountLeft = 0;
             return false;
@@ -107,7 +107,7 @@ void Firm::check_myJobOffers() {
 
 void Firm::accept_jobOffer_response(std::shared_ptr<JobOffer> jobOffer) {
     std::lock_guard<std::mutex> lock(myMutex);
-    print_status(this, "Accepting jobOffer response...");
+    util::print_status(this, "Accepting jobOffer response...");
     money -= jobOffer->wage;
     laborHired += jobOffer->labor;
     jobOffer->amountLeft--;

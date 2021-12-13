@@ -26,11 +26,11 @@ protected:
 class ProfitMaxer : public Firm {
 public:
     template <typename T, typename ... Args>
-	friend std::shared_ptr<T> create(Args&& ... args);
+	friend std::shared_ptr<T> util::create(Args&& ... args);
 
     template <typename ... Args>
     static std::shared_ptr<ProfitMaxer> init(Args&& ... args) {
-        auto profitMaxer = create<ProfitMaxer>(std::forward<Args>(args) ...);
+        auto profitMaxer = util::create<ProfitMaxer>(std::forward<Args>(args) ...);
         profitMaxer->init_decisionMaker();
         return profitMaxer;
     }

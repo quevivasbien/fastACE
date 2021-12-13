@@ -631,7 +631,7 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     // clip wage to avoid inf values
     if (wage > constants::largeNumber) {
         wage = constants::largeNumber;
-        pprint(2, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
+        util::pprint(2, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
     }
 
     {
@@ -723,33 +723,41 @@ void DecisionNetHandler::record_reward(
 }
 
 
+void DecisionNetHandler::save_models(const std::string& saveDir) {
+    torch::save(offerEncoder, saveDir + "offerEncoder.pt");
+    torch::save(jobOfferEncoder, saveDir + "jobOfferEncoder.pt");
+	torch::save(purchaseNet, saveDir + "purchaseNet.pt");
+    torch::save(firmPurchaseNet, saveDir + "firmPurchaseNet.pt");
+    torch::save(laborSearchNet, saveDir + "laborSearchNet.pt");
+    torch::save(consumptionNet, saveDir + "consumptionNet.pt");
+    torch::save(productionNet, saveDir + "productionNet.pt");
+    torch::save(offerNet, saveDir + "offerNet.pt");
+    torch::save(jobOfferNet, saveDir + "jobOfferNet.pt");
+    torch::save(valueNet, saveDir + "valueNet.pt");
+    torch::save(firmValueNet, saveDir + "firmValueNet.pt");
+}
+
 void DecisionNetHandler::save_models() {
-    torch::save(offerEncoder, "offerEncoder.pt");
-    torch::save(jobOfferEncoder, "jobOfferEncoder.pt");
-	torch::save(purchaseNet, "purchaseNet.pt");
-    torch::save(firmPurchaseNet, "firmPurchaseNet.pt");
-    torch::save(laborSearchNet, "laborSearchNet.pt");
-    torch::save(consumptionNet, "consumptionNet.pt");
-    torch::save(productionNet, "productionNet.pt");
-    torch::save(offerNet, "offerNet.pt");
-    torch::save(jobOfferNet, "jobOfferNet.pt");
-    torch::save(valueNet, "valueNet.pt");
-    torch::save(firmValueNet, "firmValueNet.pt");
+    save_models(DEFAULT_SAVE_DIR);
 }
 
 
+void DecisionNetHandler::load_models(const std::string& saveDir) {
+    torch::load(offerEncoder, saveDir + "offerEncoder.pt");
+    torch::load(jobOfferEncoder, saveDir + "jobOfferEncoder.pt");
+	torch::load(purchaseNet, saveDir + "purchaseNet.pt");
+    torch::load(firmPurchaseNet, saveDir + "firmPurchaseNet.pt");
+    torch::load(laborSearchNet, saveDir + "laborSearchNet.pt");
+    torch::load(consumptionNet, saveDir + "consumptionNet.pt");
+    torch::load(productionNet, saveDir + "productionNet.pt");
+    torch::load(offerNet, saveDir + "offerNet.pt");
+    torch::load(jobOfferNet, saveDir + "jobOfferNet.pt");
+    torch::load(valueNet, saveDir + "valueNet.pt");
+    torch::load(firmValueNet, saveDir + "firmValueNet.pt");
+}
+
 void DecisionNetHandler::load_models() {
-    torch::load(offerEncoder, "offerEncoder.pt");
-    torch::load(jobOfferEncoder, "jobOfferEncoder.pt");
-	torch::load(purchaseNet, "purchaseNet.pt");
-    torch::load(firmPurchaseNet, "firmPurchaseNet.pt");
-    torch::load(laborSearchNet, "laborSearchNet.pt");
-    torch::load(consumptionNet, "consumptionNet.pt");
-    torch::load(productionNet, "productionNet.pt");
-    torch::load(offerNet, "offerNet.pt");
-    torch::load(jobOfferNet, "jobOfferNet.pt");
-    torch::load(valueNet, "valueNet.pt");
-    torch::load(firmValueNet, "firmValueNet.pt");
+    load_models(DEFAULT_SAVE_DIR);
 }
 
 

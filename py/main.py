@@ -1,6 +1,7 @@
 import ctypes
 import os
 import json
+import numpy as np
 import matplotlib.pyplot as plt
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -68,18 +69,19 @@ class TrainingParams(ctypes.Structure):
         ('hiddenSize', ctypes.c_uint),
         ('nHidden', ctypes.c_uint),
         ('nHiddenSmall', ctypes.c_uint),
-        ('purchaseNetLR', ctypes.c_float),
-        ('firmPurchaseNetLR', ctypes.c_float),
-        ('laborSearchNetLR', ctypes.c_float),
-        ('consumptionNetLR', ctypes.c_float),
-        ('productionNetLR', ctypes.c_float),
-        ('offerNetLR', ctypes.c_float),
-        ('jobOfferNetLR', ctypes.c_float),
-        ('valueNetLR', ctypes.c_float),
-        ('firmValueNetLR', ctypes.c_float),
+        ('purchaseNetLR', ctypes.c_double),
+        ('firmPurchaseNetLR', ctypes.c_double),
+        ('laborSearchNetLR', ctypes.c_double),
+        ('consumptionNetLR', ctypes.c_double),
+        ('productionNetLR', ctypes.c_double),
+        ('offerNetLR', ctypes.c_double),
+        ('jobOfferNetLR', ctypes.c_double),
+        ('valueNetLR', ctypes.c_double),
+        ('firmValueNetLR', ctypes.c_double),
         ('episodeBatchSizeForLRDecay', ctypes.c_uint),
         ('patienceForLRDecay', ctypes.c_uint),
-        ('multiplierForLRDecay', ctypes.c_float)
+        ('multiplierForLRDecay', ctypes.c_double),
+        ('reverseAnnealingPeriod', ctypes.c_uint)
     ]
 
 
@@ -98,7 +100,7 @@ lib.run.argtypes = [
 lib.run.restype = None
 
 lib.train.argtypes = [
-    ctypes.POINTER(ctypes.c_float),
+    ctypes.POINTER(ctypes.c_double),
     CustomScenarioParams,
     TrainingParams,
     ctypes.c_bool
@@ -111,7 +113,7 @@ def train(
     trainingParams: TrainingParams,
     fromPretrained=False
 ) -> list:
-    losses = ctypes.ARRAY(ctypes.c_float, trainingParams.numEpisodes)()
+    losses = ctypes.ARRAY(ctypes.c_double, trainingParams.numEpisodes)()
     lib.train(
         losses, scenarioParams, trainingParams, fromPretrained
     )
@@ -121,6 +123,12 @@ def train(
 def dict_from_cstruct(struct):
     fields = [field[0] for field in getattr(struct, '_fields_')]
     return {field: getattr(struct, field) for field in fields}
+
+
+def moving_average(arr, binsize):
+    out = np.cumsum(arr)
+    out[binsize:] = out[binsize:] - out[:-binsize]
+    return out[binsize-1:] / binsize
 
 
 class RuntimeManager:
@@ -136,6 +144,10 @@ class RuntimeManager:
             numFirms
         )
         self.trainingParams = lib.create_training_params()
+        self.loss_history = []
+
+        if not os.path.isfile('settings.json'):
+            self.save_settings()
     
     def edit_scenario_params(self, attr: str, new_value):
         setattr(self.scenarioParams, attr, new_value)
@@ -212,6 +224,16 @@ class RuntimeManager:
         if checkpointEveryNEpisodes is not None:
             self.edit_training_params('checkpointEveryNEpisodes', checkpointEveryNEpisodes)
     
+    def plot_loss_history(self, slice=0, moving_avg_binsize=10):
+        loss_history = self.loss_history[slice:]
+        plt.plot(loss_history, marker='.', linestyle='', alpha=0.5, label='episode loss')
+        plt.xlabel('episode')
+        plt.ylabel('loss')
+        if 0 < moving_avg_binsize < len(loss_history):
+            moving_avg = moving_average(loss_history, moving_avg_binsize)
+            plt.plot(range(moving_avg_binsize - 1, len(loss_history)), moving_avg, label=f'moving average')
+        plt.show()
+    
     def train(
         self,
         numEpisodes=None,
@@ -219,22 +241,23 @@ class RuntimeManager:
         updateEveryNEpisodes=None,
         checkpointEveryNEpisodes=None,
         plot=True,
-        fromPretrained=False
+        fromPretrained=False,
+        warnIfNotSynched=True
     ) -> list:
 
-        if fromPretrained and not self.settings_synched():
+        if fromPretrained and warnIfNotSynched and not self.settings_synched():
             return []
 
         self.set_episode_params(
             numEpisodes, episodeLength, updateEveryNEpisodes, checkpointEveryNEpisodes
         )
 
+        self.save_settings()
+
         losses = train(self.scenarioParams, self.trainingParams, fromPretrained)
+        self.loss_history += losses
         if plot:
-            plt.plot(losses, marker='.', linestyle='', alpha=0.3)
-            plt.xlabel('episode')
-            plt.ylabel('loss')
-            plt.show()
+            self.plot_loss_history(slice=-self.trainingParams.numEpisodes)
         
         return losses
     
@@ -242,5 +265,36 @@ class RuntimeManager:
         if not self.settings_synched():
             return
         self.set_episode_params(episodeLength=episodeLength)
+        self.save_settings()
         lib.run(self.scenarioParams, self.trainingParams)
+
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description='Train or run a model from the command line, will by default load settings from settings.json unless overriden')
+    parser.add_argument('--train', action='store_true', help='If provided, will train, otherwise just run for a single episode; a pre-trained model must exist if not training')
+    parser.add_argument('--load', action='store_true', help="If provided, will load saved models when training rather than starting from a randomly initialized state")
+    parser.add_argument('--npersons', type=int, help='Number of persons in the simulation')
+    parser.add_argument('--nfirms', type=int, help='Number of firms in the simulation')
+    parser.add_argument('--episodes', type=int, help='Number of episodes to run for, ignored if not training')
+    parser.add_argument('--eplength', type=int, help='Length of each episode')
+    parser.add_argument('--lr', type=float, help="The learning rate at which to start training, ignored if not training")
+
+    args = parser.parse_args()
+    mgr = RuntimeManager(1, 1)
+    mgr.load_settings()
+    if args.npersons is not None:
+        mgr.scenarioParams.numPersons = args.npersons
+    if args.nfirms is not None:
+        mgr.scenarioParams.numFirms = args.nfirms
+    if args.lr is not None:
+        mgr.set_all_lrs(args.lr)
+    if args.train:
+        mgr.train(args.episodes, args.eplength, fromPretrained=args.load)
+    else:
+        mgr.run(args.eplength)
     
+
+if __name__ == '__main__':
+    main()

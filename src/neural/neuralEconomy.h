@@ -359,7 +359,9 @@ struct DecisionNetHandler {
         int offset
     );
 
+    void save_models(const std::string& saveDir);
     void save_models();
+    void load_models(const std::string& saveDir);
     void load_models();
 
 };

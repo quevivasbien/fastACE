@@ -23,21 +23,25 @@ struct LRScheduler {
         torch::optim::Adam* optimizer,
         unsigned int episodeBatchSize,
         unsigned int patience,
-        float decayMultiplier,
+        double decayMultiplier,
+        unsigned int cosinePeriod,
         std::string name
     );
 
-    void decay_lr();
-    void update_lr(float loss);
+    void scale_lr(double multiplier);
+    void update_lr(double loss);
 
     torch::optim::Adam* optimizer;
-    std::vector<float> lossHistory;
+    std::vector<double> lossHistory;
     unsigned int episodeBatchSize;
     unsigned int patience;
-    float decayMultiplier;
+    double decayMultiplier;
+    unsigned int cosinePeriod;
 
-    float bestBatchLoss = HUGE_VALF;
+    double bestBatchLoss = HUGE_VALF;
     unsigned int numBadBatches = 0;
+
+    unsigned int cosineTimer = 0;
 
     std::string name;
 };
@@ -48,23 +52,24 @@ struct AdvantageActorCritic {
 
     AdvantageActorCritic(
         std::shared_ptr<DecisionNetHandler> handler,
-        float purchaseNetLR,
-        float firmPurchaseNetLR,
-        float laborSearchNetLR,
-        float consumptionNetLR,
-        float productionNetLR,
-        float offerNetLR,
-        float jobOfferNetLR,
-        float valueNetLR,
-        float firmValueNetLR,
+        double purchaseNetLR,
+        double firmPurchaseNetLR,
+        double laborSearchNetLR,
+        double consumptionNetLR,
+        double productionNetLR,
+        double offerNetLR,
+        double jobOfferNetLR,
+        double valueNetLR,
+        double firmValueNetLR,
         unsigned int episodeBatchSizeForLRDecay,
         unsigned int patienceForLRDecay,
-        float multiplierForLRDecay
+        double multiplierForLRDecay,
+        unsigned int cosinePeriod
     );
 
     AdvantageActorCritic(
         std::shared_ptr<DecisionNetHandler> handler,
-        float initialLR
+        double initialLR
     );
 
     AdvantageActorCritic(
@@ -85,15 +90,15 @@ struct AdvantageActorCritic {
 
     // these are for keeping track of where the loss is coming from
     // the idea is to track these to adjust learning rates as needed
-    float purchaseNetLoss = 0.0;
-    float firmPurchaseNetLoss = 0.0;
-    float laborSearchNetLoss = 0.0;
-    float consumptionNetLoss = 0.0;
-    float productionNetLoss = 0.0;
-    float offerNetLoss = 0.0;
-    float jobOfferNetLoss = 0.0;
-    float valueNetLoss = 0.0;
-    float firmValueNetLoss = 0.0;
+    double purchaseNetLoss = 0.0;
+    double firmPurchaseNetLoss = 0.0;
+    double laborSearchNetLoss = 0.0;
+    double consumptionNetLoss = 0.0;
+    double productionNetLoss = 0.0;
+    double offerNetLoss = 0.0;
+    double jobOfferNetLoss = 0.0;
+    double valueNetLoss = 0.0;
+    double firmValueNetLoss = 0.0;
 
     LRScheduler purchaseNetScheduler;
     LRScheduler firmPurchaseNetScheduler;
@@ -120,29 +125,29 @@ struct AdvantageActorCritic {
     // pair.first = loss, pair.second = advantage vector
     std::pair<torch::Tensor, torch::Tensor> get_advantage_for_person(Person* person);
 
-    float get_loss_for_person_in_episode(std::weak_ptr<Person> person, unsigned int numTotalPersons);
+    double get_loss_for_person_in_episode(std::weak_ptr<Person> person, unsigned int numTotalPersons);
 
     // pair.first = loss, pair.second = advantage vector
     std::pair<torch::Tensor, torch::Tensor> get_advantage_for_firm(Firm* firm);
 
-    float get_loss_for_firm_in_episode(std::weak_ptr<Firm> firm, unsigned int numTotalFirms);
+    double get_loss_for_firm_in_episode(std::weak_ptr<Firm> firm, unsigned int numTotalFirms);
 
     void get_loss_for_persons_multithreaded_(
         const std::vector<std::weak_ptr<Person>>& persons,
         unsigned int startIdx,
         unsigned int endIdx,
-        float* loss
+        double* loss
     );
-    float get_loss_for_persons_multithreaded();
+    double get_loss_for_persons_multithreaded();
     void get_loss_for_firms_multithreaded_(
         const std::vector<std::weak_ptr<Firm>>& firms,
         unsigned int startIdx,
         unsigned int endIdx,
-        float* loss
+        double* loss
     );
-    float get_loss_for_firms_multithreaded();
+    double get_loss_for_firms_multithreaded();
 
-    float get_loss_multithreaded();
+    double get_loss_multithreaded();
 
     void zero_all_grads();
 
@@ -152,7 +157,7 @@ struct AdvantageActorCritic {
 
     void all_optims_step();
 
-    float train_on_episode();
+    double train_on_episode();
  
 };
 

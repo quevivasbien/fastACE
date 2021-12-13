@@ -13,10 +13,9 @@
 
 class Agent;
 
-inline std::default_random_engine get_rng() {
-    unsigned int seed = std::chrono::steady_clock::now().time_since_epoch().count();
-    return std::default_random_engine(seed);
-}
+namespace util {
+
+std::default_random_engine get_rng();
 
 // helper function used for filtering offers by availability
 template <typename T>
@@ -81,16 +80,7 @@ void flush(
 
 
 // helper for dividing up agents to be operated on by multiple threads
-inline std::vector<unsigned int> get_indices_for_multithreading(unsigned int numAgents) {
-    unsigned int agentsPerThread = numAgents / constants::numThreads;
-    unsigned int extras = numAgents % constants::numThreads;
-    std::vector<unsigned int> indices(constants::numThreads + 1);
-    indices[0] = 0;
-    for (unsigned int i = 1; i <= constants::numThreads; i++) {
-        indices[i] = indices[i-1] + agentsPerThread + (i <= extras);
-    }
-    return indices;
-}
+std::vector<unsigned int> get_indices_for_multithreading(unsigned int numAgents);
 
 
 template <typename T>
@@ -117,12 +107,8 @@ T make_nonnegative(T x) {
 
 // FUNCTIONS FOR PRINTING BASED ON VALUE OF constants::verbose
 
-// pprint = priority print
-inline void pprint(unsigned int priority, const std::string& message) {
-    if (constants::verbose >= priority) {
-        std::cout << message << std::endl;
-    }
-}
+// pprint = priority print: prints message if constants::verbose >= priority
+void pprint(unsigned int priority, const std::string& message);
 
 template <typename ... Args>
 void pprint(unsigned int priority, Args&& ... args) {
@@ -135,9 +121,7 @@ void pprint(unsigned int priority, Args&& ... args) {
 }
 
 // print if verbose > 0
-inline void print(const std::string& message) {
-    pprint(1, message);
-}
+void print(const std::string& message);
 
 template <typename ... Args>
 void print(Args&& ... args) {
@@ -184,16 +168,14 @@ void print_status(std::shared_ptr<T> origin, const std::string& status) {
 }
 
 
-inline void pprint_time_elasped(
+void pprint_time_elasped(
     unsigned int priority,
     std::chrono::time_point<std::chrono::system_clock> start_time,
     std::chrono::time_point<std::chrono::system_clock> end_time
-) {
-    std::chrono::duration<double> elasped_seconds = end_time - start_time;
-    if (constants::verbose >= priority) {
-        std::cout << elasped_seconds.count() << "s" << std::endl;
-    }
-}
+);
 
+std::string format_sci_notation(double x);
+
+} // namespace util
 
 #endif

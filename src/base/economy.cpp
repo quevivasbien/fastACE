@@ -1,11 +1,11 @@
 #include "base.h"
 
 Economy::Economy(std::vector<std::string> goods) : goods(goods), numGoods(goods.size()) {
-    rng = get_rng();
+    rng = util::get_rng();
 }
 
 std::shared_ptr<Person> Economy::add_person() {
-    return create<Person>(shared_from_this());
+    return util::create<Person>(shared_from_this());
 }
 
 void Economy::add_agent(std::shared_ptr<Person> person) {
@@ -16,7 +16,7 @@ void Economy::add_agent(std::shared_ptr<Person> person) {
 }
 
 std::shared_ptr<Firm> Economy::add_firm(std::shared_ptr<Agent> firstOwner) {
-    return create<Firm>(shared_from_this(), firstOwner);
+    return util::create<Firm>(shared_from_this(), firstOwner);
 }
 
 void Economy::add_agent(std::shared_ptr<Firm> firm) {
@@ -72,7 +72,7 @@ void run_agents_(
 template <typename A>
 void run_agents(const std::vector<std::shared_ptr<A>>* const agents) {
     // runs time_step for a vector of agents, multithreaded
-    std::vector<unsigned int> indices = get_indices_for_multithreading(agents->size());
+    std::vector<unsigned int> indices = util::get_indices_for_multithreading(agents->size());
     std::vector<std::thread> threads;
     threads.reserve(constants::numThreads);
     for (unsigned int i = 0; i < constants::numThreads; i++) {
@@ -122,8 +122,8 @@ bool Economy::time_step() {
             firm->time_step();
         }
     }
-    flush(market);
-    flush(jobMarket);
+    util::flush(market);
+    util::flush(jobMarket);
     if (constants::verbose >= 3) {
         print_summary();
     }

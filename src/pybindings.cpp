@@ -90,12 +90,12 @@ void run(
 
 
 void train(
-    float* output,
+    double* output,
     neural::CustomScenarioParams scenarioParams,
     neural::TrainingParams trainingParams,
     bool fromPretrained
 ) {
-    std::vector<float> losses = (
+    std::vector<double> losses = (
         (!fromPretrained) ?
         neural::train(
             scenarioParams,

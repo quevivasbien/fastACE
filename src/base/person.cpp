@@ -22,11 +22,11 @@ bool Person::time_step() {
     }
     else {
         laborSupplied = 0.0;
-        print_status(this, "Searching for job...");
+        util::print_status(this, "Searching for job...");
         search_for_jobs();
-        print_status(this, "Buying goods...");
+        util::print_status(this, "Buying goods...");
         buy_goods();
-        print_status(this, "Consuming goods...");
+        util::print_status(this, "Consuming goods...");
         consume_goods();
         return true;
     }
@@ -37,7 +37,7 @@ bool Person::respond_to_jobOffer(std::weak_ptr<const JobOffer> jobOffer_) {
     // check that the person actually has enough labor remaining, then send to offerer
     auto jobOffer = jobOffer_.lock();
     if (jobOffer != nullptr && laborSupplied + jobOffer->labor <= 1) {
-        print_status(this, "Asking for jobOffer acceptance...");
+        util::print_status(this, "Asking for jobOffer acceptance...");
         bool accepted = std::static_pointer_cast<Firm>(
             jobOffer->offerer.lock()
         )->review_jobOffer_response(
