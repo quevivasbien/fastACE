@@ -4,7 +4,7 @@
 #include <memory>
 #include "base.h"
 
-struct Scenario {
+class Scenario {
     /**
      * This is simply a container that generates an Economy according to some user-defined specification.
      * 
@@ -12,6 +12,7 @@ struct Scenario {
      * but it's helpful when the same scenario must be recreated many times,
      * e.g. when training the neural nets in a neural::NeuralEconomy
      */
+public:
     Scenario() {}
     virtual ~Scenario() {}
     virtual std::shared_ptr<Economy> setup() = 0;

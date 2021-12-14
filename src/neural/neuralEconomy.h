@@ -21,7 +21,7 @@ namespace neural {
 
 
 // forward declaration
-struct DecisionNetHandler;
+class DecisionNetHandler;
 
 
 class NeuralEconomy : public Economy {
@@ -52,8 +52,9 @@ protected:
 
 // Defined in neuralPersonDecisionMaker.cpp
 
-struct NeuralPersonDecisionMaker : PersonDecisionMaker {
+class NeuralPersonDecisionMaker : public PersonDecisionMaker {
 
+public:
 	NeuralPersonDecisionMaker(std::weak_ptr<DecisionNetHandler> guide);
 
 	virtual std::vector<Order<Offer>> choose_goods() override;
@@ -83,8 +84,9 @@ protected:
 
 // Defined in neuralFirmDecisionMaker.cpp
 
-struct NeuralFirmDecisionMaker : FirmDecisionMaker {
+class NeuralFirmDecisionMaker : public FirmDecisionMaker {
 
+public:
     NeuralFirmDecisionMaker(std::weak_ptr<DecisionNetHandler> guide);
 
     virtual Eigen::ArrayXd choose_production_inputs() override;
@@ -155,7 +157,9 @@ torch::Tensor get_job_probas(
 );
 
 
-struct DecisionNetHandler {
+class DecisionNetHandler {
+    
+public:
 	// a wrapper for various decision nets
 	DecisionNetHandler(
 		std::shared_ptr<NeuralEconomy> economy,

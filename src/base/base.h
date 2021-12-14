@@ -18,8 +18,9 @@ class Person;
 class Firm;
 
 
-struct BaseOffer {
-    // Base struct from which Offer and JobOffer inherit
+class BaseOffer {
+    // Base class from which Offer and JobOffer inherit
+public:
     BaseOffer(
         std::weak_ptr<Agent> offerer,
         unsigned int amount_available
@@ -37,7 +38,8 @@ struct BaseOffer {
 };
 
 
-struct Offer : BaseOffer {
+class Offer : public BaseOffer {
+public:
     Offer(
         std::weak_ptr<Agent> offerer,
         unsigned int amount_available,
@@ -50,7 +52,8 @@ struct Offer : BaseOffer {
 };
 
 
-struct JobOffer : BaseOffer {
+class JobOffer : public BaseOffer {
+public:
     JobOffer(
         std::weak_ptr<Firm> offerer,
         unsigned int amount_available,

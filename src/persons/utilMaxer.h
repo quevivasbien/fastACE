@@ -8,7 +8,8 @@
 
 class UtilMaxer;
 
-struct PersonDecisionMaker {
+class PersonDecisionMaker {
+public:
     PersonDecisionMaker();
     // called by UtilMaxer::buy_goods()
     // looks at current goods on market and chooses bundle that maximizes utility

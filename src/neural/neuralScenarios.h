@@ -18,7 +18,8 @@
 namespace neural {
 
 // a NeuralScenario returns a neuralEconomy rather than a base Economy
-struct NeuralScenario : Scenario {
+class NeuralScenario : public Scenario {
+public:
     NeuralScenario();
     NeuralScenario(
         std::shared_ptr<AdvantageActorCritic> trainer
@@ -33,8 +34,9 @@ struct NeuralScenario : Scenario {
 };
 
 
-struct SimpleScenario : NeuralScenario {
+class SimpleScenario : public NeuralScenario {
     // A basic scenario with two persons and one firm, helpful for testing/debugging
+public:
     SimpleScenario();
     SimpleScenario(
         std::shared_ptr<AdvantageActorCritic> trainer
@@ -113,9 +115,9 @@ struct CustomScenarioParams {
 };
 
 
-struct CustomScenario : NeuralScenario {
+class CustomScenario : public NeuralScenario {
     // A versatile scenario: create a struct of parameters just how you like it or use the default config ;)
-
+public:
     CustomScenario(
         unsigned int numPeople,
         unsigned int numFirms

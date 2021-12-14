@@ -8,7 +8,8 @@
 
 class ProfitMaxer;
 
-struct FirmDecisionMaker {
+class FirmDecisionMaker {
+public:
     virtual Eigen::ArrayXd choose_production_inputs() = 0;
     virtual std::vector<std::shared_ptr<Offer>> choose_good_offers() = 0;
     virtual std::vector<std::shared_ptr<JobOffer>> choose_job_offers() = 0;

@@ -6,14 +6,14 @@
 #include <Eigen/Dense>
 #include "vecToScalar.h"
 
-using Vec = Eigen::ArrayXd;
 
-struct VecToVec {
+class VecToVec {
+public:
     virtual ~VecToVec() {}
     VecToVec(unsigned int numInputs, unsigned int numOutputs) : numInputs(numInputs), numOutputs(numOutputs) {}
-    virtual Vec f(const Vec& quantities) const = 0;
+    virtual Eigen::ArrayXd f(const Eigen::ArrayXd& quantities) const = 0;
     // df returns derivative of ith output w.r.t. jth input variable
-    virtual double df(const Vec& quantities, unsigned int i, unsigned int j) const = 0;
+    virtual double df(const Eigen::ArrayXd& quantities, unsigned int i, unsigned int j) const = 0;
 
     unsigned int numInputs;
     unsigned int numOutputs;
@@ -21,9 +21,10 @@ struct VecToVec {
 
 
 template <typename VToS>
-struct VToVFromVToS : VecToVec {
+class VToVFromVToS : public VecToVec {
     // encloses a VecToScalar object but maintains functionality as a vec to vec
     // only returns a positive value in one of its output indices
+public:
     VToVFromVToS(
         std::shared_ptr<VToS> vecToScalar,
         unsigned int numOutputs,
@@ -35,13 +36,13 @@ struct VToVFromVToS : VecToVec {
         // implicitly assumes numOutputs = 1 and outputIndex = 0
     ) : VToVFromVToS(vecToScalar, 1, 0) {}
 
-    Vec f(const Vec& quantities) const override {
-        Vec out = Eigen::ArrayXd::Zero(numOutputs);
+    Eigen::ArrayXd f(const Eigen::ArrayXd& quantities) const override {
+        Eigen::ArrayXd out = Eigen::ArrayXd::Zero(numOutputs);
         out(outputIndex) = vecToScalar->f(quantities);
         return out;
     }
 
-    double df(const Vec& quantities, unsigned int i, unsigned int j) const override {
+    double df(const Eigen::ArrayXd& quantities, unsigned int i, unsigned int j) const override {
         if (i == outputIndex) {
             return vecToScalar->df(quantities, j);
         }
@@ -55,12 +56,13 @@ struct VToVFromVToS : VecToVec {
 };
 
 
-struct SumOfVecToVec : VecToVec {
+class SumOfVecToVec : public VecToVec {
     // contains a list of VecToVecs with identical input and output dimensions
     // output will be sum of outputs for VecToVecs in the list
+public:
     SumOfVecToVec(std::vector<std::shared_ptr<VecToVec>> innerFunctions);
-    Vec f(const Vec& quantities) const override;
-    double df(const Vec& quantities, unsigned int i, unsigned int j) const override;
+    Eigen::ArrayXd f(const Eigen::ArrayXd& quantities) const override;
+    double df(const Eigen::ArrayXd& quantities, unsigned int i, unsigned int j) const override;
 
     std::vector<std::shared_ptr<VecToVec>> innerFunctions;
     unsigned int numInnerFunctions;

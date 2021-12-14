@@ -232,6 +232,7 @@ class RuntimeManager:
         if 0 < moving_avg_binsize < len(loss_history):
             moving_avg = moving_average(loss_history, moving_avg_binsize)
             plt.plot(range(moving_avg_binsize - 1, len(loss_history)), moving_avg, label=f'moving average')
+        plt.legend()
         plt.show()
     
     def train(

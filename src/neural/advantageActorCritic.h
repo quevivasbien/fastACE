@@ -17,7 +17,8 @@
 namespace neural {
 
 
-struct LRScheduler {
+class LRScheduler {
+public:
     // Performs a function similar to torch's ReduceLROnPlateau
     LRScheduler(
         torch::optim::Adam* optimizer,
@@ -47,9 +48,10 @@ struct LRScheduler {
 };
 
 
-struct AdvantageActorCritic {
+class AdvantageActorCritic {
     using Adam = torch::optim::Adam;
-
+    
+public:
     AdvantageActorCritic(
         std::shared_ptr<DecisionNetHandler> handler,
         double purchaseNetLR,
