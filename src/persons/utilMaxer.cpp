@@ -65,8 +65,9 @@ void UtilMaxer::buy_goods() {
     std::vector<Order<Offer>> orders = decisionMaker->choose_goods();
     for (auto order : orders) {
         for (unsigned int i = 0; i < order.amount; i++) {
-            respond_to_offer(order.offer);
-            // TODO: Handle cases where response is rejected
+            if (!respond_to_offer(order.offer)) {
+                break;
+            }
         }
     }
 }
@@ -76,8 +77,9 @@ void UtilMaxer::search_for_jobs() {
     std::vector<Order<JobOffer>> orders = decisionMaker->choose_jobs();
     for (auto order : orders) {
         for (unsigned int i = 0; i < order.amount; i++) {
-            respond_to_jobOffer(order.offer);
-            // TODO: Handle cases where response is rejected
+            if (!respond_to_jobOffer(order.offer)) {
+                break;
+            }
         }
     }
 }

@@ -43,7 +43,7 @@ This will generate a `main` executable in the `bin` directory. To change what th
 
 ## Project structure
 
-See the [code explainer](./docs/explains_code.md) document for an overview of how the code in this project is arranged.
+See the [code explainer](./docs/code_explainer.md) document for an overview of how the code in this project is arranged.
 
 ## How to use
 

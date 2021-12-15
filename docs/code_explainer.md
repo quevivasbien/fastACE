@@ -141,7 +141,7 @@ double util1 = utilMaxer->get_utilFunc()->f(
 );
 // A cleaner way is to call UtilMaxer::u
 double util2 = utilMaxer->u(
-    utilMaxer->get_labor(),
+    utilMaxer->get_labor(),  // takes input in terms of labor
     utilMaxer->get_inventory()
 );
 // If we don't provide a value for labor, it's assumed we want utilMaxer->get_labor()
@@ -228,7 +228,7 @@ The `VecToScalar` class is a wrapper for functions taking an Eigen array as an i
 
 ## `VecToVec`
 
-The `VecToVec` class is a wrapper for functions taking an Eigen array as an input and returning an Eigen array as an output. Like with `VecToScalar`, you can use `VecToVec:f` to call the wrapped function and `VecToVec:df` to call its derivatives.
+The `VecToVec` class is a wrapper for functions taking an Eigen array as an input and returning an Eigen array as an output. Like with `VecToScalar`, you can use `VecToVec::f` to call the wrapped function and `VecToVec::df` to call its derivatives.
 
 Again like `VecToScalar`, `VecToVec` is pure virtual -- it is intended only as a template for child classes. However, there aren't many child classes of `VecToVec` implemented by default; there is only `VToVFromVToS`, which wraps a `VecToScalar` instance, allowing it to produce an array output, and `SumOfVecToVec`, which wraps multiple `VecToScalar` instances, combining their outputs into an array output.
 
@@ -239,11 +239,41 @@ The `src/neural` directory contains code for implementing reinforcement learning
 
 This code is based on the Libtorch library, which is the C++ frontend for PyTorch. If you're familiar with PyTorch, a lot of the neural network code here should look familiar, since Libtorch tries to maintain a style as similar as possible to its Python sibling.
 
-## Basic structure
+## The `NeuralEconomy` class
+
+The `src/neural/neuralEconomy.h` contains an implementation of a `NeuralEconomy` class, which inherits from `Economy`. The `NeuralEconomy` class works more or less the same as the vanilla `Economy`, but is intended to manage `UtilMaxer` and `ProfitMaxer` agents with decision makers of type `NeuralPersonDecisionMaker` and `NeuralFirmDecisionMaker`, respectively. The `NeuralEconomy` should itself be managed by an instance of the `DecisionNetHandler` class.
+
+## The `DecisionNetHandler` class
+
+`DecisionNetHandler` is a container for neural networks, themselves defined in `src/neural/decisionNets.h`, that manages a `NeuralEconomy`. When agents within that economy make their decisions, they query their decision makers (of type `NeuralPersonDecisionMaker` or `NeuralFirmDecisionMaker`, as appropriate), which in turn pass on information relevant to the decision to the `DecisionNetHandler`. The `DecisionNetHandler` plugs the information into one of its decision nets and sends the result back to the decision maker. Finally, the decision maker interprets the neural network output and tells the agent what decision to make.
+
+## The `AdvantageActorCritic` class
+
+`AdvantageActorCritic` manages a `DecisionNetHandler` and is used to train the handler's neural networks via an advantage actor-critic algorithm.
+
+## To sum up...
+
+* `AdvantageActorCritic` manages a `DecisionNetHandler`.
+* `DecisionNetHandler` manages a set of neural networks and a `NeuralEconomy`
+* `NeuralEconomy` manages a set of `UtilMaxer`s and `ProfitMaxer`s.
+* Those `UtilMaxers` and `ProfitMaxers` manage `NeuralPersonDecisionMaker`s and `NeuralFirmDecisionMaker`s, respectively.
+
+# Scenarios
+
 
 [in progress]
 
 
 # Notes on code idioms
 
-[in progress]
+## Ownership relationships are expressed with pointers
+
+When one object within the simulation manages another object, this relationship is typically expressed by giving the managing object a shared pointer to the managed object. The managed object typically keeps either a weak pointer or a raw pointer to its manager, depending on whether the manager can go out of scope while the managed object is working on something.
+
+## Naming conventions
+
+I've tried to be consistent in labeling class names using camel case, with the first letter capitalized, and instances of classes (or primitive types) using camel case, with the first letter uncapitalized. Function names use snake case.
+
+## Classes vs structs
+
+Classes are used when an object implements some method beside a constructor or destructor. Structs are used when an object is basically just a container for data. The definitions of the neural networks in `src/neural/decisionNets.h` also use structs in order to match the Libtorch documentation.

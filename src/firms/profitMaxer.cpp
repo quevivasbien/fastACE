@@ -103,8 +103,9 @@ void ProfitMaxer::buy_goods() {
     auto orders = decisionMaker->choose_goods();
     for (auto order : orders) {
         for (unsigned int i = 0; i < order.amount; i++) {
-            respond_to_offer(order.offer);
-            // TODO: Handle cases where response is rejected
+            if (!respond_to_offer(order.offer)) {
+                break;
+            }
         }
     }
 }
