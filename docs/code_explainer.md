@@ -1,3 +1,23 @@
+# Table of contents
+
+* [About this guide](#about-this-guide)
+* [Project structure](#project-structure)
+* [Primitive classes](#primitive-classes)
+    * [The `Agent` class](#the-agent-class)
+    * [The `Person` class](#the-person-class)
+    * [The `Firm` class](#the-firm-class)
+    * [Offers](#offers)
+    * [The `Economy` class](#the-economy-class)
+* [Derived classes](#derived-classes)
+    * [`UtilMaxer`](#utilmaxer)
+    * [`ProfitMaxer`](#profitmaxer)
+* [Function wrappers](#function-wrappers)
+    * [`VecToScalar`](#vectoscalar)
+    * [`VecToVec`](#vectovec)
+* [Reinforcement learning](#reinforcement-learning)
+* [Scenarios](#scenarios)
+* [Notes on code idioms](#notes-on-code-idioms)
+
 # About this guide
 
 This is not intended to be an exhaustive source of documentation for this project's code; rather, it's meant to provide a basic overview for where things are and what they do. You may still need to refer to the header files in the source code if you want details, at least for now.
@@ -239,6 +259,8 @@ The `src/neural` directory contains code for implementing reinforcement learning
 
 This code is based on the Libtorch library, which is the C++ frontend for PyTorch. If you're familiar with PyTorch, a lot of the neural network code here should look familiar, since Libtorch tries to maintain a style as similar as possible to its Python sibling.
 
+All the code in the `src/neural` directory sits inside the `neural` namespace.
+
 ## The `NeuralEconomy` class
 
 The `src/neural/neuralEconomy.h` contains an implementation of a `NeuralEconomy` class, which inherits from `Economy`. The `NeuralEconomy` class works more or less the same as the vanilla `Economy`, but is intended to manage `UtilMaxer` and `ProfitMaxer` agents with decision makers of type `NeuralPersonDecisionMaker` and `NeuralFirmDecisionMaker`, respectively. The `NeuralEconomy` should itself be managed by an instance of the `DecisionNetHandler` class.
@@ -260,8 +282,7 @@ The `src/neural/neuralEconomy.h` contains an implementation of a `NeuralEconomy`
 
 # Scenarios
 
-
-[in progress]
+It can be tedious to manually set up the simulations you want every time you want to run something. To help, there is a `Scenario` class provided, which has a `setup()` method intended to return a pre-configured `Economy`. The default `Scenario` class is pure virtual -- it's just a template for user-defined scenarios -- but the `src/neural/neuralScenarios.h` header file defines some `Scenario` subclasses that are useful for creating and training scenarios using the tools in the `src/neural` directory (described in the Reinforcement Learning section above).
 
 
 # Notes on code idioms
