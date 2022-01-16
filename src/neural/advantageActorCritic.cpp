@@ -20,6 +20,16 @@ LRScheduler::LRScheduler(
     name(name)
 {}
 
+double LRScheduler::get_lr() const {
+    for (auto& group : optimizer->param_groups()) {
+        if (group.has_options()) {
+            return (static_cast<torch::optim::AdamOptions&>(group.options())).get_lr();
+        }
+    }
+    // if we arrive here, that's a problem!!
+    assert(false);
+}
+
 void LRScheduler::scale_lr(double multiplier) {
     for (auto& group : optimizer->param_groups()) {
         if (group.has_options()) {

@@ -29,6 +29,8 @@ public:
         std::string name
     );
 
+    double get_lr() const;
+
     void scale_lr(double multiplier);
     void update_lr(double loss);
 

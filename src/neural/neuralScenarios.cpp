@@ -200,7 +200,7 @@ std::shared_ptr<CustomScenario> create_scenario(
 
 std::vector<double> train(
     const std::shared_ptr<NeuralScenario>& scenario,
-    const TrainingParams& params
+    TrainingParams& params
 ) {
     // note: this implementation will ignore all TrainingParam members except the first four:
     // numEpisodes, episodeLength, updateEveryNEpisodes, checkPointEveryNEpisodes
@@ -223,9 +223,9 @@ std::vector<double> train(
         double loss = scenario->trainer->train_on_episode();
         auto train_time_end = std::chrono::system_clock::now();
 
-        util::pprint(2, "Time spent time stepping:");
+        util::pprint(2, "Time spent stepping:");
         util::pprint_time_elasped(2, step_time_start, step_time_end);
-        util::pprint(2, "Time spent time training:");
+        util::pprint(2, "Time spent training:");
         util::pprint_time_elasped(2, step_time_end, train_time_end);
 
         if (std::isnan(loss)) {
@@ -264,6 +264,17 @@ std::vector<double> train(
     util::pprint(1, "Total time:");
     util::pprint_time_elasped(1, start, end);
 
+    // also update params with new learning rates
+    params.purchaseNetLR = scenario->trainer->purchaseNetScheduler.get_lr();
+    params.firmPurchaseNetLR = scenario->trainer->firmPurchaseNetScheduler.get_lr();
+    params.laborSearchNetLR = scenario->trainer->laborSearchNetScheduler.get_lr();
+    params.consumptionNetLR = scenario->trainer->consumptionNetScheduler.get_lr();
+    params.productionNetLR = scenario->trainer->productionNetScheduler.get_lr();
+    params.offerNetLR = scenario->trainer->offerNetScheduler.get_lr();
+    params.jobOfferNetLR = scenario->trainer->jobOfferNetScheduler.get_lr();
+    params.valueNetLR = scenario->trainer->valueNetScheduler.get_lr();
+    params.firmValueNetLR = scenario->trainer->firmValueNetScheduler.get_lr();
+
     return losses;
 }
 
@@ -277,20 +288,21 @@ std::vector<double> train(
     if (updateEveryNEpisodes == 0) {
         updateEveryNEpisodes++;
     }
+    TrainingParams params(
+        numEpisodes,
+        episodeLength,
+        updateEveryNEpisodes,
+        checkpointEveryNEpisodes
+    );
     return train(
         scenario,
-        TrainingParams(
-            numEpisodes,
-            episodeLength,
-            updateEveryNEpisodes,
-            checkpointEveryNEpisodes
-        )
+        params
     );
 }
 
 std::vector<double> train(
     const CustomScenarioParams& scenarioParams,
-    const TrainingParams& trainingParams
+    TrainingParams& trainingParams
 ) {
     auto scenario = create_scenario(scenarioParams, trainingParams);
     return train(scenario, trainingParams);
@@ -298,10 +310,16 @@ std::vector<double> train(
 
 std::vector<double> train_from_pretrained(
     const CustomScenarioParams& scenarioParams,
-    const TrainingParams& trainingParams
+    TrainingParams& trainingParams,
+    double perturbationSize
 ) {
     auto scenario = create_scenario(scenarioParams, trainingParams);
     scenario->handler->load_models();
+    if (perturbationSize > 0.0) {
+        assert(perturbationSize <= 1.0);
+        scenario->handler->perturb_models(perturbationSize);
+    }
+
     return train(scenario, trainingParams);
 }
 

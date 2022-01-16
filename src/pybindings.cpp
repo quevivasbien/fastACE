@@ -91,20 +91,22 @@ void run(
 
 void train(
     double* output,
-    neural::CustomScenarioParams scenarioParams,
-    neural::TrainingParams trainingParams,
-    bool fromPretrained
+    const neural::CustomScenarioParams* scenarioParams,
+    neural::TrainingParams* trainingParams,
+    bool fromPretrained,
+    double perturbationSize
 ) {
     std::vector<double> losses = (
         (!fromPretrained) ?
         neural::train(
-            scenarioParams,
-            trainingParams
+            *scenarioParams,
+            *trainingParams
         )
         :
         neural::train_from_pretrained(
-            scenarioParams,
-            trainingParams
+            *scenarioParams,
+            *trainingParams,
+            perturbationSize
         )
     );
     

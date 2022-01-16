@@ -20,9 +20,10 @@ extern "C" {
 
     void train(
         double* output,
-        neural::CustomScenarioParams scenarioParams,
-        neural::TrainingParams trainingParams,
-        bool fromPretrained
+        const neural::CustomScenarioParams* scenarioParams,
+        neural::TrainingParams* trainingParams,
+        bool fromPretrained,
+        double perturbationSize = 0.0
     );
 }
 

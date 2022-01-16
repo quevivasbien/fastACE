@@ -101,9 +101,10 @@ lib.run.restype = None
 
 lib.train.argtypes = [
     ctypes.POINTER(ctypes.c_double),
-    CustomScenarioParams,
-    TrainingParams,
-    ctypes.c_bool
+    ctypes.POINTER(CustomScenarioParams),
+    ctypes.POINTER(TrainingParams),
+    ctypes.c_bool,
+    ctypes.c_double
 ]
 lib.train.restype = None
 
@@ -111,11 +112,16 @@ lib.train.restype = None
 def train(
     scenarioParams: CustomScenarioParams,
     trainingParams: TrainingParams,
-    fromPretrained=False
+    fromPretrained=False,
+    perturbationSize=0.0
 ) -> list:
     losses = ctypes.ARRAY(ctypes.c_double, trainingParams.numEpisodes)()
     lib.train(
-        losses, scenarioParams, trainingParams, fromPretrained
+        losses,
+        ctypes.POINTER(CustomScenarioParams)(scenarioParams),
+        ctypes.POINTER(TrainingParams)(trainingParams),
+        fromPretrained,
+        perturbationSize
     )
     return list(losses)
 
@@ -127,8 +133,11 @@ def dict_from_cstruct(struct):
 
 def moving_average(arr, binsize):
     out = np.cumsum(arr)
+    first_elems = out[:binsize-1] / np.arange(1, min(binsize-1, len(arr)) + 1)
+    if binsize > len(arr):
+        first_elems
     out[binsize:] = out[binsize:] - out[:-binsize]
-    return out[binsize-1:] / binsize
+    return np.concatenate((first_elems, out[binsize-1:] / binsize))
 
 
 class RuntimeManager:
@@ -224,16 +233,25 @@ class RuntimeManager:
         if checkpointEveryNEpisodes is not None:
             self.edit_training_params('checkpointEveryNEpisodes', checkpointEveryNEpisodes)
     
-    def plot_loss_history(self, slice=0, moving_avg_binsize=10):
+    def plot_loss_history(
+        self,
+        slice=0,
+        moving_avg_binsize=10,
+        show=True,
+        scatter_label='episode loss',
+        line_label='moving average',
+        scatter_color=None,
+        line_color=None
+    ):
         loss_history = self.loss_history[slice:]
-        plt.plot(loss_history, marker='.', linestyle='', alpha=0.5, label='episode loss')
-        plt.xlabel('episode')
-        plt.ylabel('loss')
-        if 0 < moving_avg_binsize < len(loss_history):
-            moving_avg = moving_average(loss_history, moving_avg_binsize)
-            plt.plot(range(moving_avg_binsize - 1, len(loss_history)), moving_avg, label=f'moving average')
-        plt.legend()
-        plt.show()
+        plt.plot(loss_history, marker='.', linestyle='', alpha=0.5, label=scatter_label, color=scatter_color)
+        moving_avg = moving_average(loss_history, moving_avg_binsize)
+        plt.plot(moving_avg, label=line_label, color=line_color)
+        if show:
+            plt.xlabel('episode')
+            plt.ylabel('loss')
+            plt.legend()
+            plt.show()
     
     def train(
         self,
@@ -243,7 +261,9 @@ class RuntimeManager:
         checkpointEveryNEpisodes=None,
         plot=True,
         fromPretrained=False,
-        warnIfNotSynched=True
+        warnIfNotSynched=True,
+        saveSettings=True,
+        perturbationSize=0.0
     ) -> list:
 
         if fromPretrained and warnIfNotSynched and not self.settings_synched():
@@ -253,9 +273,10 @@ class RuntimeManager:
             numEpisodes, episodeLength, updateEveryNEpisodes, checkpointEveryNEpisodes
         )
 
-        self.save_settings()
+        if saveSettings:
+            self.save_settings()
 
-        losses = train(self.scenarioParams, self.trainingParams, fromPretrained)
+        losses = train(self.scenarioParams, self.trainingParams, fromPretrained, perturbationSize)
         self.loss_history += losses
         if plot:
             self.plot_loss_history(slice=-self.trainingParams.numEpisodes)

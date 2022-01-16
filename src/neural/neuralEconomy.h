@@ -368,6 +368,8 @@ public:
     void load_models(const std::string& saveDir);
     void load_models();
 
+    void perturb_models(double pct);
+
 };
 
 } // namespace neural

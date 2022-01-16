@@ -631,7 +631,7 @@ std::pair<double, double> DecisionNetHandler::choose_job_offers(
     // clip wage to avoid inf values
     if (wage > constants::largeNumber) {
         wage = constants::largeNumber;
-        util::pprint(2, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
+        util::pprint(3, "Note: Clipped wage to " + std::to_string(constants::largeNumber));
     }
 
     {
@@ -758,6 +758,20 @@ void DecisionNetHandler::load_models(const std::string& saveDir) {
 
 void DecisionNetHandler::load_models() {
     load_models(DEFAULT_SAVE_DIR);
+}
+
+void DecisionNetHandler::perturb_models(double pct) {
+    offerEncoder->perturb_weights(pct);
+    jobOfferEncoder->perturb_weights(pct);
+    purchaseNet->perturb_weights(pct);
+    firmPurchaseNet->perturb_weights(pct);
+    laborSearchNet->perturb_weights(pct);
+    consumptionNet->perturb_weights(pct);
+    productionNet->perturb_weights(pct);
+    offerNet->perturb_weights(pct);
+    jobOfferNet->perturb_weights(pct);
+    valueNet->perturb_weights(pct);
+    firmValueNet->perturb_weights(pct);
 }
 
 

@@ -11,6 +11,30 @@ void xavier_init(torch::nn::Module& module) {
 	}
 }
 
+void perturb_layer(torch::nn::Linear& linear, double pct) {
+    torch::NoGradGuard noGrad;
+	// figure out what the standard deviation should be
+	int in;
+	int out;
+	if (linear->weight.ndimension() == 2) {
+		in = linear->weight.size(1);
+		out = linear->weight.size(0);
+	}
+	else {
+		in = linear->weight.size(1) * linear->weight[0][0].numel();
+		out = linear->weight.size(0) * linear->weight[0][0].numel();
+	}
+	const auto xavier_var = 2.0 / (in + out);
+
+	// we want to add noise but keep the xavier standard dev
+	// var(aX + bY) = a^2 var(X) + b^2 var(Y) = xavier_var
+	// here var(X) = xavier_var and Y is std normal noise, var(Y) = 1
+	// b^2 = xavier_var (1 - a^2)
+	// 1 - a^2 = pct, so noise should be sqrt(xavier_var * pct) * N(0, 1)
+	auto noise = std::sqrt(xavier_var * pct) * torch::randn(linear->weight.sizes());
+	linear->weight = std::sqrt(1 - pct) * linear->weight + noise;
+}
+
 
 OfferEncoder::OfferEncoder(
 	int stackSize,
@@ -50,6 +74,14 @@ torch::Tensor OfferEncoder::forward(torch::Tensor x) {
 	}
 	// finally we reduce to the encoding size and return
 	return torch::tanh(last->forward(x));
+}
+
+void OfferEncoder::perturb_weights(double pct) {
+	perturb_layer(dimReduce, pct);
+	for (auto h : hidden) {
+		perturb_layer(h, pct);
+	}
+	perturb_layer(last, pct);
 }
 
 
@@ -110,6 +142,14 @@ torch::Tensor PurchaseNet::forward(
 	return torch::sigmoid(last->forward(x));
 }
 
+void PurchaseNet::perturb_weights(double pct) {
+	perturb_layer(flatten, pct);
+	for (auto h : hidden) {
+		perturb_layer(h, pct);
+	}
+	perturb_layer(last, pct);
+}
+
 
 ConsumptionNet::ConsumptionNet(
     int numUtilParams,
@@ -151,6 +191,14 @@ torch::Tensor ConsumptionNet::forward(
 		x = x + torch::tanh(hidden[i]->forward(x));
 	}
     return last->forward(x).reshape({numGoods, 2});
+}
+
+void ConsumptionNet::perturb_weights(double pct) {
+	perturb_layer(first, pct);
+	for (auto h : hidden) {
+		perturb_layer(h, pct);
+	}
+	perturb_layer(last, pct);
 }
 
 
@@ -248,6 +296,21 @@ torch::Tensor OfferNet::forward(
 	return torch::cat({x_a, x_b}, -1);
 }
 
+void OfferNet::perturb_weights(double pct) {
+	perturb_layer(flatten, pct);
+	for (auto h : hidden_firstStage) {
+		perturb_layer(h, pct);
+	}
+	for (auto h : hidden_secondStage_a) {
+		perturb_layer(h, pct);
+	}
+	for (auto h : hidden_secondStage_b) {
+		perturb_layer(h, pct);
+	}
+	perturb_layer(last_a, pct);
+	perturb_layer(last_b, pct);
+}
+
 
 JobOfferNet::JobOfferNet(
 		std::shared_ptr<OfferEncoder> offerEncoder,
@@ -286,6 +349,8 @@ JobOfferNet::JobOfferNet(
 	this->offerEncoder = offerEncoder;
 }
 
+
+
 torch::Tensor JobOfferNet::forward(
 		const torch::Tensor& offerEncodings,
 		const torch::Tensor& utilParams,
@@ -305,6 +370,14 @@ torch::Tensor JobOfferNet::forward(
 	}
 	// compute final outputs
 	return last->forward(x);
+}
+
+void JobOfferNet::perturb_weights(double pct) {
+	perturb_layer(flatten, pct);
+	for (auto h : hidden) {
+		perturb_layer(h, pct);
+	}
+	perturb_layer(last, pct);
 }
 
 
@@ -368,6 +441,15 @@ torch::Tensor ValueNet::forward(
 		x = x + torch::tanh(hidden[i]->forward(x));
 	}
 	return last->forward(x);
+}
+
+void ValueNet::perturb_weights(double pct) {
+	perturb_layer(offerFlatten, pct);
+	perturb_layer(jobOfferFlatten, pct);
+	for (auto h : hidden) {
+		perturb_layer(h, pct);
+	}
+	perturb_layer(last, pct);
 }
 
 } // namespace neural

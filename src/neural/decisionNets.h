@@ -8,6 +8,8 @@ namespace neural {
 
 void xavier_init(torch::nn::Module& module);
 
+void perturb_layer(torch::nn::Module& linear, double pct);
+
 
 struct OfferEncoder : torch::nn::Module {
 	/**
@@ -36,6 +38,8 @@ struct OfferEncoder : torch::nn::Module {
 	);
 
 	torch::Tensor forward(torch::Tensor x);
+
+	void perturb_weights(double pct);
 
 	torch::nn::Linear dimReduce = nullptr;
 	std::vector<torch::nn::Linear> hidden;
@@ -88,6 +92,8 @@ struct PurchaseNet : torch::nn::Module {
 		const torch::Tensor& inventory
 	);
 
+	void perturb_weights(double pct);
+
 	torch::nn::Linear flatten = nullptr;
 	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
@@ -119,6 +125,8 @@ struct ConsumptionNet : torch::nn::Module {
 		const torch::Tensor& labor,
 		const torch::Tensor& inventory
 	);
+
+	void perturb_weights(double pct);
 
 	torch::nn::Linear first = nullptr;
 	std::vector<torch::nn::Linear> hidden;
@@ -163,6 +171,8 @@ struct OfferNet : torch::nn::Module {
 		const torch::Tensor& inventory
 	);
 
+	void perturb_weights(double pct);
+
 	torch::nn::Linear flatten = nullptr;
 	std::vector<torch::nn::Linear> hidden_firstStage;
 	std::vector<torch::nn::Linear> hidden_secondStage_a;
@@ -201,6 +211,8 @@ struct JobOfferNet : torch::nn::Module {
 		const torch::Tensor& inventory
 	);
 
+	void perturb_weights(double pct);
+
 	torch::nn::Linear flatten = nullptr;
 	std::vector<torch::nn::Linear> hidden;
 	torch::nn::Linear last = nullptr;
@@ -233,6 +245,8 @@ struct ValueNet : torch::nn::Module {
 		const torch::Tensor& labor,
 		const torch::Tensor& inventory
 	);
+
+	void perturb_weights(double pct);
 
 	torch::nn::Linear offerFlatten = nullptr;
 	torch::nn::Linear jobOfferFlatten = nullptr;

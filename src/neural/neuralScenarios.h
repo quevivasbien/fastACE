@@ -193,7 +193,7 @@ std::shared_ptr<CustomScenario> create_scenario(
 
 std::vector<double> train(
     const std::shared_ptr<NeuralScenario>& scenario,
-    const TrainingParams& params
+    TrainingParams& params
 );
 
 // this is just a convenience function if you don't want to create a TrainingParams object
@@ -209,13 +209,16 @@ std::vector<double> train(
 // Just supply a CustomScenarioParams struct and a TrainingParams struct
 std::vector<double> train(
     const CustomScenarioParams& scenarioParams,
-    const TrainingParams& trainingParams
+    TrainingParams& trainingParams
 );
 
 // Same as above but loads the neural net params from disk if some training has already been done
 std::vector<double> train_from_pretrained(
     const CustomScenarioParams& scenarioParams,
-    const TrainingParams& trainingParams
+    TrainingParams& trainingParams,
+    // perturbationSize is in [0, 1].
+    // if perturbationSize > 0, then noise will be added to all the model parameters
+    double perturbationSize = 0.0
 );
 
 
