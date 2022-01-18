@@ -32,7 +32,10 @@ void perturb_layer(torch::nn::Linear& linear, double pct) {
 	// b^2 = xavier_var (1 - a^2)
 	// 1 - a^2 = pct, so noise should be sqrt(xavier_var * pct) * N(0, 1)
 	auto noise = std::sqrt(xavier_var * pct) * torch::randn(linear->weight.sizes());
-	linear->weight = std::sqrt(1 - pct) * linear->weight + noise;
+	// we need to modify the weight in place, otherwise torch makes a copy
+	// which of course messes things up down the line
+	linear->weight *= std::sqrt(1 - pct);
+	linear->weight += noise;
 }
 
 

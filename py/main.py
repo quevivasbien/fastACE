@@ -260,19 +260,21 @@ class RuntimeManager:
         updateEveryNEpisodes=None,
         checkpointEveryNEpisodes=None,
         plot=True,
-        fromPretrained=False,
+        fromPretrained=False,#
         warnIfNotSynched=True,
         saveSettings=True,
         perturbationSize=0.0
     ) -> list:
 
-        if fromPretrained and warnIfNotSynched and not self.settings_synched():
-            return []
-
         self.set_episode_params(
             numEpisodes, episodeLength, updateEveryNEpisodes, checkpointEveryNEpisodes
         )
+        # print(self.view_training_params())
+        # print(self.view_scenario_params())
 
+        if fromPretrained and warnIfNotSynched and not self.settings_synched():
+            return []
+        
         if saveSettings:
             self.save_settings()
 

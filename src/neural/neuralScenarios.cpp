@@ -242,21 +242,23 @@ std::vector<double> train(
                 break;
             }
         }
-        else if (((i - 1) % params.checkpointEveryNEpisodes == 0) || (i == params.numEpisodes - 1)) {
+        else if (((i + 1) % params.checkpointEveryNEpisodes == 0) || (i == params.numEpisodes - 1)) {
+            util::pprint(2, "Saving models");
             scenario->handler->save_models();
         }
         losses[i] = loss;
 
-        if ((params.updateEveryNEpisodes != 0) && ((i + 1) % params.updateEveryNEpisodes == 0)) {
+        if ((params.updateEveryNEpisodes != 0) && (((i + 1) % params.updateEveryNEpisodes == 0) || (i + 1 == params.numEpisodes))) {
             double sum = 0.0;
-            for (int j = 0; j < params.updateEveryNEpisodes; j++) {
+            int updateWindow = (params.updateEveryNEpisodes <= params.numEpisodes) ? params.updateEveryNEpisodes : params.numEpisodes;
+            for (int j = 0; j < updateWindow; j++) {
                 sum += losses[i - j];
             }
-            double avg = sum / params.updateEveryNEpisodes;
+            double avg = sum / updateWindow;
             util::print(
                 "Episode " + std::to_string(i+1)
-                + ": Average loss over past " + std::to_string(params.updateEveryNEpisodes)
-                + " episodes = " + util::format_sci_notation(sum / params.updateEveryNEpisodes)
+                + ": Average loss over past " + std::to_string(updateWindow)
+                + " episodes = " + util::format_sci_notation(avg)
             );
         }
     }
@@ -314,6 +316,7 @@ std::vector<double> train_from_pretrained(
     double perturbationSize
 ) {
     auto scenario = create_scenario(scenarioParams, trainingParams);
+    util::pprint(2, "Loading models");
     scenario->handler->load_models();
     if (perturbationSize > 0.0) {
         assert(perturbationSize <= 1.0);

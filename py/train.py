@@ -10,6 +10,9 @@ import os
 from shutil import copyfile
 from main import RuntimeManager
 
+import argparse
+
+
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 SAVE_DIR = '../models/'  # this should be the same path as DEFAULT_SAVE_DIR in src/neural/neuralConstants.h
@@ -18,7 +21,7 @@ N_PERSONS = 48
 N_FIRMS = 12
 EPISODE_LENGTH = 40
 
-# Parameters for training as a swarm
+# [default] Parameters for training as a swarm
 SWARM_SIZE = 10
 N_EPISODES = 100
 INITIAL_PERTURBATION = 0.1
@@ -64,6 +67,9 @@ class Trainer:
         self.numPersons = numPersons
         self.numFirms = numFirms
         self.episodeLength = episodeLength
+
+    ### FOLLOWING METHODS ARE FOR ALGO THAT STARTS BY CREATING LOTS OF TRAINING ATTEMPTS,
+    ### CHOOSES THE BEST ONE, THEN TRAINS THAT ONE FOR MANY EPISODES
     
     def make_attempt(self, lr: float, attemptLength: int) -> typing.Tuple[RuntimeManager, float]:
         mgr = RuntimeManager(self.numPersons, self.numFirms)
@@ -87,6 +93,28 @@ class Trainer:
         best_attempt = min(range(numExploratoryAttempts), key=lambda i: loss_scores[i])
         move_model_files(os.path.join(SAVE_DIR, f'attempt{best_attempt}'), SAVE_DIR, copy=True)
         return mgrs[best_attempt]
+
+    def train(self, fastLR: float, slowLR: float, numExploratoryAttempts: int, attemptLength: int, numEpisodes: int) -> list:
+        if fastLR is None:
+            fastLR = FAST_LR
+        if slowLR is None:
+            slowLR = SLOW_LR
+        if numExploratoryAttempts is None:
+            numExploratoryAttempts = N_EXPLORATORY
+        if attemptLength is None:
+            attemptLength = EXPLORATORY_EPISODES
+        if numEpisodes is None:
+            numEpisodes = TRAIN_EPISODES
+        
+        if numExploratoryAttempts > 0:
+            mgr = self.explore(fastLR, numExploratoryAttempts, attemptLength)
+        else:
+            mgr = RuntimeManager(self.numPersons, self.numFirms)
+        mgr.set_all_lrs(slowLR)
+        return mgr.train(numEpisodes, self.episodeLength, fromPretrained=numExploratoryAttempts > 0, warnIfNotSynched=False)
+    
+    ### FOLLOWING METHODS ARE FOR ALGO THAT CREATES A "SWARM" OF ATTEMPTS IN EACH ITERATION
+    ### TRAINS EACH MEMBER OF THE SWARM FOR A WHILE, THEN CHOOSES THE BEST ATTEMPT AND USES IT TO SEED NEXT ITERATION
     
     def _run_swarm_member(self, numEpisodes: int, perturbationSize: float, target_score: float):
         move_model_files(os.path.join(SAVE_DIR, 'host'), SAVE_DIR, copy=True)
@@ -99,6 +127,7 @@ class Trainer:
             n_trial_episodes,
             self.episodeLength,
             fromPretrained=True,
+            warnIfNotSynched=False,
             saveSettings=False,
             perturbationSize=perturbationSize,
             plot=False
@@ -121,7 +150,7 @@ class Trainer:
         )
         return mgr
     
-    def _train_as_swarm(
+    def _run_swarm_iter(
         self,
         swarmSize: int,
         numEpisodes: int,
@@ -191,29 +220,10 @@ class Trainer:
         best_score = mgr.loss_history[-1]
         for i in range(numIterations):
             print(f'\n---\nRUNNING SWARM ITERATION {i+1} OF {numIterations}\n---')
-            mgr, best_score = self._train_as_swarm(
+            mgr, best_score = self._run_swarm_iter(
                 swarmSize, numEpisodes, initialPerturbation * perturbationDecay**i, i, best_score
             )
         return mgr
-
-    def train(self, fastLR: float, slowLR: float, numExploratoryAttempts: int, attemptLength: int, numEpisodes: int) -> list:
-        if fastLR is None:
-            fastLR = FAST_LR
-        if slowLR is None:
-            slowLR = SLOW_LR
-        if numExploratoryAttempts is None:
-            numExploratoryAttempts = N_EXPLORATORY
-        if attemptLength is None:
-            attemptLength = EXPLORATORY_EPISODES
-        if numEpisodes is None:
-            numEpisodes = TRAIN_EPISODES
-        
-        if numExploratoryAttempts > 0:
-            mgr = self.explore(fastLR, numExploratoryAttempts, attemptLength)
-        else:
-            mgr = RuntimeManager(self.numPersons, self.numFirms)
-        mgr.set_all_lrs(slowLR)
-        return mgr.train(numEpisodes, self.episodeLength, fromPretrained=numExploratoryAttempts > 0, warnIfNotSynched=False)
 
 
 
@@ -241,10 +251,31 @@ class Trainer:
 
 #     trainer.train(args.fast, args.slow, args.attempts, args.expeps, args.episodes)
 
+def main():
+    parser = argparse.ArgumentParser(description='Train using iterated swarm algorithm')
+    parser.add_argument('--persons', type=int, help=f'Number of persons in the simulation, default={N_PERSONS}')
+    parser.add_argument('--firms', type=int, help=f'Number of firms in the simulation, default={N_FIRMS}')
+    parser.add_argument('--episodes', type=int, help=f'Number of episodes to run during each iteration, default={N_EPISODES}')
+    parser.add_argument('--episode_len', type=int, help=f'Length of each episode, default={EPISODE_LENGTH}')
+    parser.add_argument('--lr', type=float, help=f'The learning rate to start at, default={LR}')
+    parser.add_argument('--iters', type=int, help=f'Number of iterations to train for, default={SWARM_ITERATIONS}')
+    parser.add_argument('--swarmsize', type=int, help=f'Number of attempts in each swarm, default={SWARM_SIZE}')
+    parser.add_argument('--perturb_init', type=float, help=f'Initial perturbation size, should be in [0,1], default={INITIAL_PERTURBATION}')
+    parser.add_argument('--perturb_decay', type=float, help=f'How much to decay perturbation with each iteration, default={PERTURBATION_DECAY}')
+
+    args = parser.parse_args()
+
+    trainer = Trainer()
+    if args.persons is not None:
+        trainer.numPersons = args.persons
+    if args.firms is not None:
+        trainer.numFirms = args.firms
+    if args.episode_len is not None:
+        trainer.episodeLength = args.episode_len
+    
+    trainer.train_as_swarm(args.swarmsize, args.episodes, args.lr, args.perturb_init, args.perturb_decay, args.iters)
+
 
 if __name__ == '__main__':
-    # main()
-    trainer = Trainer()
-    mgr = trainer.train_as_swarm(None, None, None, None, None, None)
-    mgr.plot_loss_history()
+    main()
     
